@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { checkPolicy } from "../src/policy.js";
+import { evaluateClaudePreToolUse } from "../src/claude-hook.js";
 
 test("blocks sensitive paths", () => {
   assert.equal(checkPolicy({ action: "file_write", path: "/etc/hosts" }).decision, "deny");
@@ -178,4 +179,34 @@ test("normalizes quoted terraform working directories", () => {
 test("detects pagers nested behind shell command wrappers", () => {
   assert.equal(checkPolicy({ action: "shell", command: "sh -c 'less README.md'" }).decision, "ask");
   assert.equal(checkPolicy({ action: "shell", command: "eval 'more README.md'" }).decision, "ask");
+});
+
+test("maps Claude PreToolUse calls to enforceable policy decisions", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-claude-"));
+  const shell = evaluateClaudePreToolUse({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "touch ../outside.txt" }, cwd: root });
+  assert.equal(shell.hookSpecificOutput.permissionDecision, "deny");
+  const write = evaluateClaudePreToolUse({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: "src/ok.txt", content: "safe" }, cwd: root });
+  assert.equal(write.hookSpecificOutput.permissionDecision, "allow");
+  assert.equal(write.hookSpecificOutput.hookEventName, "PreToolUse");
+  assert.equal(typeof write.hookSpecificOutput.permissionDecisionReason, "string");
+  assert.equal(write.systemMessage.startsWith("workflow-guard:"), true);
+  const edit = evaluateClaudePreToolUse({ hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path: ".env", old_string: "old", new_string: "secret" }, cwd: root });
+  assert.equal(edit.hookSpecificOutput.permissionDecision, "deny");
+  const notebook = evaluateClaudePreToolUse({ hook_event_name: "PreToolUse", tool_name: "NotebookEdit", tool_input: { notebook_path: ".env", new_source: "secret" }, cwd: root });
+  assert.equal(notebook.hookSpecificOutput.permissionDecision, "deny");
+  for (const malformed of [
+    { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: "ok.txt" }, cwd: root },
+    { hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path: "ok.txt", new_string: "safe" }, cwd: root },
+    { hook_event_name: "PreToolUse", tool_name: "NotebookEdit", tool_input: { notebook_path: "ok.ipynb" }, cwd: root },
+    { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "pwd" } },
+  ]) {
+    const output = evaluateClaudePreToolUse(malformed);
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.equal(output.systemMessage.includes("unsupported-tool-input"), true);
+  }
+  for (const hook_event_name of [undefined, "PostToolUse"]) {
+    const output = evaluateClaudePreToolUse({ hook_event_name, tool_name: "Bash", tool_input: { command: "pwd" }, cwd: root });
+    assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+    assert.equal(output.systemMessage.includes("invalid-hook-event"), true);
+  }
 });

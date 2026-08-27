@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "description": "Cross-client MCP policy checks for safer agentic coding workflows.",
   "type": "module",
-  "bin": { "workflow-guard-mcp": "./dist/server.js" },
+  "bin": {
+    "workflow-guard-mcp": "./dist/server.js",
+    "workflow-guard-claude-hook": "./dist/claude-hook.js"
+  },
   "files": ["dist/", "docs/", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "postbuild": "node -e \"require('node:fs').chmodSync('dist/claude-hook.js', 0o755)\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --test --import tsx test/*.test.ts"
   },

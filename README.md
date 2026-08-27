@@ -34,6 +34,8 @@ npm run build
 
 The initial transport is stdio because both Claude Code and Codex support local stdio MCP servers. Streamable HTTP can be added without changing the policy API.
 
+Claude Code can enforce the portable decisions for supported native tools through the [PreToolUse adapter](docs/claude-code.md). This is separate from the MCP transport: the hook is the enforcement point.
+
 ## Design Principle
 
 The public promise is deliberately narrower than "this MCP sandboxes your coding agent." It centralizes policy. Client adapters enforce that policy wherever the client exposes a trustworthy interception mechanism; otherwise the result remains advisory and should be combined with the client's native sandbox and approval controls.
