@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { decodeShellEscapes, splitShellSegments, unwrapShellWords } from "./shell.js";
-import { checkProtectedPath } from "./path-policy.js";
+import { checkProtectedPath, checkSecretPath } from "./path-policy.js";
 
 const TOOL = ["open", "code"].join("");
 const TOOL_JSON_RE = new RegExp(`(?:^|/)${TOOL}\\.jsonc?$`, "i");
@@ -45,11 +45,12 @@ export function isPathOutsideWorkspace(path: string, root: string): boolean {
   return escapes(lexicalRelative) || escapes(realRelative);
 }
 
-function mutationPaths(segment: string): { targets: string[]; moveSources: string[] } {
+function mutationPaths(segment: string): { targets: string[]; moveSources: string[]; secretSources: string[] } {
   const words = unwrapShellWords(segment);
   const command = basename(words[0] ?? "");
   const targets: string[] = [];
   const moveSources: string[] = [];
+  const secretSources: string[] = [];
   for (const match of segment.matchAll(/(?:^|[\s>]|(?<=[^\s"']))(?:\d*&?)?>{1,2}\s*["']?([^\s>&|;"']+)/g)) if (match[1]) targets.push(match[1]);
   if (command === "tee") targets.push(...words.slice(1).filter((word) => !word.startsWith("-")));
   if (command === "dd") targets.push(...words.slice(1).filter((word) => word.startsWith("of=")).map((word) => word.slice(3)));
@@ -57,15 +58,20 @@ function mutationPaths(segment: string): { targets: string[]; moveSources: strin
   if (["cp", "mv", "ln", "install"].includes(command)) {
     const operands: string[] = [];
     let targetDirectory: string | undefined;
+    let stopOptions = false;
     for (let i = 1; i < words.length; i += 1) {
       const word = words[i]!;
-      if (word === "-t" || word === "--target-directory") { targetDirectory = words[++i]; continue; }
-      if (/^-t.+/.test(word)) { targetDirectory = word.slice(2); continue; }
-      if (word.startsWith("--target-directory=")) { targetDirectory = word.slice("--target-directory=".length); continue; }
-      if (!word.startsWith("-")) operands.push(word);
+      if (!stopOptions && word === "--") { stopOptions = true; continue; }
+      if (!stopOptions && (word === "-t" || word === "--target-directory")) { targetDirectory = words[++i]; continue; }
+      if (!stopOptions && /^-t.+/.test(word)) { targetDirectory = word.slice(2); continue; }
+      if (!stopOptions && word.startsWith("--target-directory=")) { targetDirectory = word.slice("--target-directory=".length); continue; }
+      if (!stopOptions && (word === "-S" || word === "--suffix")) { i += 1; continue; }
+      if (!stopOptions && (/^-S.+/.test(word) || word.startsWith("--suffix="))) continue;
+      if (stopOptions || !word.startsWith("-")) operands.push(word);
     }
     if (targetDirectory) targets.push(targetDirectory); else if (operands.length) targets.push(operands.at(-1)!);
     if (command === "mv") moveSources.push(...(targetDirectory ? operands : operands.slice(0, -1)));
+    if (["cp", "mv", "ln"].includes(command)) secretSources.push(...(targetDirectory ? operands : operands.slice(0, -1)));
   }
   if (command === "sed" && words.slice(1).some((word) => /^-(?:[A-Za-z]*i|i\S*)$/.test(word) || /^--in-place(?:=.*)?$/.test(word))) {
     let scriptSupplied = false;
@@ -78,7 +84,7 @@ function mutationPaths(segment: string): { targets: string[]; moveSources: strin
       targets.push(word);
     }
   }
-  return { targets, moveSources };
+  return { targets, moveSources, secretSources };
 }
 
 function isGuardConfigurationPath(path: string, workspaceRoot?: string): boolean {
@@ -104,7 +110,10 @@ export function checkBoundaryPolicy(command: string, workspaceRoot?: string, dep
         if (nested) return nested;
       }
     }
-    const { targets, moveSources } = mutationPaths(segment);
+    const { targets, moveSources, secretSources } = mutationPaths(segment);
+    for (const source of secretSources) {
+      if (checkSecretPath(source, workspaceRoot)) return { decision: "deny", policy: "secret-source-transfer", reason: `Shell command would copy, move, or link sensitive file '${source}' under a non-secret name.` };
+    }
     for (const path of [...targets, ...moveSources]) {
       if (isGuardConfigurationPath(path, workspaceRoot)) return { decision: "deny", policy: "guard-tamper", reason: "Modifying host or workflow-guard configuration from the agent is not allowed." };
       if (checkProtectedPath(path, workspaceRoot)) return { decision: "deny", policy: "protected-shell-path", reason: `Shell mutation targets protected path '${path}'.` };

@@ -46,6 +46,13 @@ export function checkProtectedPath(path: string, workspaceRoot?: string): string
   return undefined;
 }
 
+export function checkSecretPath(path: string, workspaceRoot?: string): boolean {
+  const lexical = workspaceRoot && !isAbsolute(path) ? resolve(workspaceRoot, path) : path;
+  if (isSecretName(lexical)) return true;
+  const real = workspaceRoot || isAbsolute(path) ? realPathWithMissingTail(lexical) : undefined;
+  return real ? isSecretName(real) : false;
+}
+
 const secretPatterns: Array<{ re: RegExp; reason: string }> = [
   { re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/, reason: "private key material" },
   { re: /\bAKIA[0-9A-Z]{16}\b/, reason: "AWS access key ID" },

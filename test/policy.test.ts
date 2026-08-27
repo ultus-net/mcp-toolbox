@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -174,6 +174,27 @@ test("blocks shell mutations outside the workspace and guard tampering", () => {
   assert.equal(checkPolicy({ action: "shell", command: `touch .${tool}/workflow-guard.json`, workspaceRoot: root }).policy, "guard-tamper");
   assert.equal(checkPolicy({ action: "shell", command: `touch ~/.config/${tool}/plugins/x` }).policy, "guard-tamper");
   assert.equal(checkPolicy({ action: "shell", command: `${tool} permission list`, workspaceRoot: root }).policy, "guard-tamper");
+});
+
+test("blocks laundering secret files through filesystem transfers", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-transfer-"));
+  mkdirSync(join(root, "safe"));
+  writeFileSync(join(root, ".env"), "fixture");
+  symlinkSync("../.env", join(root, "safe", "alias"));
+  symlinkSync(".env", join(root, "-alias"));
+  for (const command of [
+    "cp .env public.txt",
+    "mv .env public.txt",
+    "ln -s .env public-link",
+    "cp -t safe .env .env.example",
+    "cp safe/alias public.txt",
+    "cp -- -alias public.txt",
+  ]) {
+    const result = checkPolicy({ action: "shell", command, workspaceRoot: root });
+    assert.equal(result.policy, "secret-source-transfer", command);
+  }
+  assert.equal(checkPolicy({ action: "shell", command: "cp README.md safe/copy.md", workspaceRoot: root }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: "cp -S .env README.md safe/copy.md", workspaceRoot: root }).decision, "allow");
 });
 
 test("hardens Git parsing without confusing source and destination refs", () => {
