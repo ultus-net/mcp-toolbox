@@ -2,6 +2,7 @@ import { checkShellPolicy } from "./shell-policy.js";
 import { checkProtectedPath, secretIn } from "./path-policy.js";
 import { checkGitPolicy } from "./git-policy.js";
 import { checkInterpreterPolicy } from "./interpreter-policy.js";
+import { checkBoundaryPolicy } from "./boundary-policy.js";
 
 export type GuardAction = "shell" | "file_write" | "git" | "network";
 
@@ -22,6 +23,10 @@ export interface GuardDecision {
 }
 
 export function checkPolicy(input: GuardCheckInput): GuardDecision {
+  if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
+    const boundary = checkBoundaryPolicy(input.command, input.workspaceRoot);
+    if (boundary) return boundary;
+  }
   if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
     const interpreter = checkInterpreterPolicy(input.command, input.workspaceRoot);
     if (interpreter) return interpreter;

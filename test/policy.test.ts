@@ -130,6 +130,30 @@ test("blocks protected paths hidden in interpreter payloads", () => {
   assert.equal(checkPolicy({ action: "shell", command: `powershell -EncodedCommand ${benign}; echo ${shellEncoded} | base64 --decode | sh` }).policy, "interpreter-secret-path");
 });
 
+test("blocks shell mutations outside the workspace and guard tampering", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-boundary-"));
+  assert.equal(checkPolicy({ action: "shell", command: "touch ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "printf x > ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "printf x>../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "printf x 2>> ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "cp local.txt ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "cp -t ../outside local.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "cp -t../outside local.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "install local.txt ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "sed -i s/a/b/ ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "mv ../outside.txt local.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "/usr/bin/touch ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  const outside = mkdtempSync(join(tmpdir(), "workflow-guard-outside-"));
+  symlinkSync(outside, join(root, "escape"));
+  assert.equal(checkPolicy({ action: "shell", command: "touch escape/new.txt", workspaceRoot: root }).policy, "workspace-boundary");
+  assert.equal(checkPolicy({ action: "shell", command: "touch local.txt", workspaceRoot: root }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: "touch ..cache", workspaceRoot: root }).decision, "allow");
+  const tool = ["open", "code"].join("");
+  assert.equal(checkPolicy({ action: "shell", command: `touch .${tool}/workflow-guard.json`, workspaceRoot: root }).policy, "guard-tamper");
+  assert.equal(checkPolicy({ action: "shell", command: `touch ~/.config/${tool}/plugins/x` }).policy, "guard-tamper");
+  assert.equal(checkPolicy({ action: "shell", command: `${tool} permission list`, workspaceRoot: root }).policy, "guard-tamper");
+});
+
 test("blocks destructive commands hidden by ANSI-C shell escapes", () => {
   const command = "$'g" + "\\x69" + "t' push origin main --force";
   assert.equal(checkPolicy({ action: "shell", command }).decision, "deny");
