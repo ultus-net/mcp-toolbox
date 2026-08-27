@@ -1,4 +1,5 @@
 import { checkShellPolicy } from "./shell-policy.js";
+import { checkProtectedPath, secretIn } from "./path-policy.js";
 
 export type GuardAction = "shell" | "file_write" | "git" | "network";
 
@@ -6,6 +7,8 @@ export interface GuardCheckInput {
   action: GuardAction;
   command?: string;
   path?: string;
+  workspaceRoot?: string;
+  content?: string;
 }
 
 export interface GuardDecision {
@@ -13,14 +16,6 @@ export interface GuardDecision {
   policy: string;
   reason: string;
 }
-
-const protectedPaths = [
-  /^\/etc(?:\/|$)/,
-  /^\/usr(?:\/|$)/,
-  /^\/var(?:\/|$)/,
-  /(?:^|\/)\.ssh(?:\/|$)/,
-  /(?:^|\/)\.env(?:\.|$)/,
-];
 
 export function checkPolicy(input: GuardCheckInput): GuardDecision {
   if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
@@ -30,12 +25,18 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
 
   const path = input.path?.trim() ?? "";
 
-  if (path && protectedPaths.some((pattern) => pattern.test(path))) {
+  const protectedReason = path ? checkProtectedPath(path, input.workspaceRoot) : undefined;
+  if (protectedReason) {
     return {
       decision: "deny",
       policy: "protected-path",
-      reason: "The proposed path is sensitive or outside a typical project workspace.",
+      reason: protectedReason,
     };
+  }
+
+  if (input.action === "file_write" && input.content) {
+    const secret = secretIn(input.content);
+    if (secret) return { decision: "deny", policy: "secret-content", reason: `The proposed content contains ${secret}.` };
   }
 
   if (input.action === "network") {

@@ -15,6 +15,8 @@ server.registerTool(
       action: z.enum(["shell", "file_write", "git", "network"]),
       command: z.string().optional(),
       path: z.string().optional(),
+      workspaceRoot: z.string().optional(),
+      content: z.string().optional(),
     },
   },
   async (input) => {

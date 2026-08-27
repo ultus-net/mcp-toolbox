@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import { checkPolicy } from "../src/policy.js";
@@ -6,6 +9,22 @@ import { checkPolicy } from "../src/policy.js";
 test("blocks sensitive paths", () => {
   assert.equal(checkPolicy({ action: "file_write", path: "/etc/hosts" }).decision, "deny");
   assert.equal(checkPolicy({ action: "file_write", path: ".env" }).decision, "deny");
+});
+
+test("blocks secret paths and symlinked protected ancestors", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-"));
+  assert.equal(checkPolicy({ action: "file_write", path: ".env.local", workspaceRoot: root }).decision, "deny");
+  assert.equal(checkPolicy({ action: "file_write", path: ".env.example", workspaceRoot: root }).decision, "allow");
+  mkdirSync(join(root, "links"));
+  symlinkSync("/etc", join(root, "links", "system"));
+  assert.equal(checkPolicy({ action: "file_write", path: "links/system/new-config", workspaceRoot: root }).decision, "deny");
+});
+
+test("blocks secret material in file writes", () => {
+  const key = ["-----BEGIN OPENSSH PRIVATE ", "KEY-----\nexample"].join("");
+  const result = checkPolicy({ action: "file_write", path: "notes.txt", content: key });
+  assert.equal(result.decision, "deny");
+  assert.equal(result.policy, "secret-content");
 });
 
 test("requires approval for external effects", () => {
