@@ -1,0 +1,24 @@
+{
+  "name": "workflow-guard-mcp",
+  "version": "0.1.0",
+  "description": "Cross-client MCP policy checks for safer agentic coding workflows.",
+  "type": "module",
+  "bin": { "workflow-guard-mcp": "./dist/server.js" },
+  "files": ["dist/", "docs/", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test --import tsx test/*.test.ts"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
