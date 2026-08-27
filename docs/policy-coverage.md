@@ -9,12 +9,11 @@ This matrix classifies the upstream `opencode-workflow-guard` behavior by where 
 - Protected-branch Git command parsing using host-supplied current/protected branch context.
 - Inline, heredoc, PowerShell, and Base64 interpreter payload inspection.
 - Symlink-aware shell mutation confinement and OpenCode/workflow-guard tamper checks.
+- Multi-target patch validation and secret-source transfer laundering detection.
+- Protected-branch enforcement for direct file mutations when the host supplies branch context.
 
 ## Remaining portable candidates
 
-- Patch multi-target extraction so every add/update/delete/move path is checked.
-- Secret-source transfer detection for copying, moving, or linking credentials to innocuous names.
-- Protected-branch enforcement for direct file mutations, using the same host-supplied branch context as Git checks.
 - Read-only agent-role enforcement when the host supplies a trusted role.
 - MCP tool mutation classification for GitHub/Azure mutation tools rather than treating all network behavior identically.
 - PR-create/body preflight parsing, including malformed literal line-break escapes.

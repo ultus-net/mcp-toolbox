@@ -1,6 +1,6 @@
 import { checkShellPolicy } from "./shell-policy.js";
 import { checkProtectedPath, secretIn } from "./path-policy.js";
-import { checkGitPolicy } from "./git-policy.js";
+import { checkGitPolicy, protectedBranchWriteReason } from "./git-policy.js";
 import { checkInterpreterPolicy } from "./interpreter-policy.js";
 import { checkBoundaryPolicy, isPathOutsideWorkspace } from "./boundary-policy.js";
 
@@ -71,6 +71,11 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
   if (input.action === "file_write" && input.content) {
     const secret = secretIn(input.content);
     if (secret) return { decision: "deny", policy: "secret-content", reason: `The proposed content contains ${secret}.` };
+  }
+
+  if (input.action === "file_write") {
+    const branchReason = protectedBranchWriteReason({ currentBranch: input.currentBranch, protectedBranches: input.protectedBranches });
+    if (branchReason) return { decision: "deny", policy: "protected-branch-write", reason: branchReason };
   }
 
   if (input.action === "network") {

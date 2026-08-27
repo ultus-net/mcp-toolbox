@@ -29,6 +29,11 @@ function protectedBranchesIn(context: GitPolicyContext): Set<string> {
   return new Set(["main", "master", ...(context.protectedBranches ?? [])]);
 }
 
+export function protectedBranchWriteReason(context: GitPolicyContext): string | undefined {
+  if (!context.currentBranch || !protectedBranchesIn(context).has(context.currentBranch)) return undefined;
+  return `Direct changes on protected branch '${context.currentBranch}' are not allowed. Create a feature branch first.`;
+}
+
 function hasUnsafeGitAlias(command: string): boolean {
   return splitShellSegments(command).some((segment) => {
     const words = unwrapShellWords(segment);
@@ -62,7 +67,7 @@ export function checkGitPolicy(command: string, context: GitPolicyContext): { po
   const pushed = pushedProtectedBranchIn(command, protectedBranches);
   if (pushed) return { decision: "deny", policy: "protected-branch-push", reason: `Direct pushes to protected branch '${pushed}' are not allowed.` };
   const normalized = normalizedGitSegments(command).join(" ; ");
-  if (context.currentBranch && protectedBranches.has(context.currentBranch) && gitWriteRe.test(normalized)) {
+  if (protectedBranchWriteReason(context) && gitWriteRe.test(normalized)) {
     return { decision: "deny", policy: "protected-branch-write", reason: `Git mutations on protected branch '${context.currentBranch}' are not allowed.` };
   }
   return undefined;

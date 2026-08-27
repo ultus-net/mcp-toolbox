@@ -52,6 +52,14 @@ test("allows an ordinary local action", () => {
   assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts" }).decision, "allow");
 });
 
+test("blocks direct file writes on host-reported protected branches", () => {
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", currentBranch: "main" }).policy, "protected-branch-write");
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", currentBranch: "master" }).policy, "protected-branch-write");
+  assert.equal(checkPolicy({ action: "file_write", patchText: "*** Update File: src/index.ts", currentBranch: "release", protectedBranches: ["release"] }).policy, "protected-branch-write");
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", currentBranch: "feat/change" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts" }).decision, "allow");
+});
+
 test("blocks destructive shell operations after shell normalization", () => {
   const destructive = [
     ["terra", "form -chdir=infra des", "troy"].join(""),
