@@ -120,6 +120,16 @@ test("blocks dynamic shell syntax that can hide policy-relevant commands", () =>
   assert.equal(checkPolicy({ action: "shell", command: "kub" + "$" + "EMPTY" + "ectl delete pod api" }).decision, "deny");
 });
 
+test("blocks protected paths hidden in interpreter payloads", () => {
+  const envPath = ["/tmp/", ".e", "nv"].join("");
+  assert.equal(checkPolicy({ action: "shell", command: `python -c 'open("${envPath}").read()'` }).policy, "interpreter-secret-path");
+  const encoded = Buffer.from(`open("${envPath}").read()`).toString("base64");
+  assert.equal(checkPolicy({ action: "shell", command: `powershell -EncodedCommand ${encoded}` }).policy, "interpreter-secret-path");
+  const benign = Buffer.from("Write-Output ok").toString("base64");
+  const shellEncoded = Buffer.from(`cat ${envPath}`).toString("base64");
+  assert.equal(checkPolicy({ action: "shell", command: `powershell -EncodedCommand ${benign}; echo ${shellEncoded} | base64 --decode | sh` }).policy, "interpreter-secret-path");
+});
+
 test("blocks destructive commands hidden by ANSI-C shell escapes", () => {
   const command = "$'g" + "\\x69" + "t' push origin main --force";
   assert.equal(checkPolicy({ action: "shell", command }).decision, "deny");
