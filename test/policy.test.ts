@@ -48,6 +48,20 @@ test("blocks destructive shell operations after shell normalization", () => {
   }
 });
 
+test("blocks Git mutations and pushes involving protected branches", () => {
+  assert.equal(checkPolicy({ action: "git", command: "git commit -m change", currentBranch: "main" }).decision, "deny");
+  assert.equal(checkPolicy({ action: "git", command: "git --no-pager commit -m change", currentBranch: "main" }).decision, "deny");
+  assert.equal(checkPolicy({ action: "git", command: "git -c color.ui=false commit -m change", currentBranch: "main" }).decision, "deny");
+  assert.equal(checkPolicy({ action: "git", command: "git commit -m change", currentBranch: "feat/change" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "git", command: "git push origin HEAD:release", protectedBranches: ["release"] }).decision, "deny");
+  assert.equal(checkPolicy({ action: "git", command: "git push origin feature", protectedBranches: ["release"] }).decision, "allow");
+  assert.equal(checkPolicy({ action: "git", command: "git config note push origin main" }).decision, "allow");
+});
+
+test("blocks inline Git aliases that can hide guarded operations", () => {
+  assert.equal(checkPolicy({ action: "git", command: "git -c alias.ship=push ship origin main" }).policy, "unsafe-git-alias");
+});
+
 test("blocks additional destructive operation families", () => {
   const commands = [
     ["kubectl roll", "out restart deployment/api"].join(""),

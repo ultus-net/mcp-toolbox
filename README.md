@@ -17,6 +17,8 @@ Most importantly, connecting an MCP server does not make it an interceptor for e
 
 The portable shell policies cover the deterministic destructive-operation families from `opencode-workflow-guard`, selected unsafe package-management operations, interactive commands that can hang agent sessions, and denial of command/process substitution or ambiguous shell syntax that prevents deterministic inspection.
 
+Git policy also protects `main`, `master`, and host-supplied custom protected branches. Hosts should provide `currentBranch` when evaluating local Git mutations; this keeps the policy core deterministic and avoids executing Git itself.
+
 ## Development
 
 Requires Node.js 20 or newer.

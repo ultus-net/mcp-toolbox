@@ -17,6 +17,8 @@ server.registerTool(
       path: z.string().optional(),
       workspaceRoot: z.string().optional(),
       content: z.string().optional(),
+      currentBranch: z.string().optional(),
+      protectedBranches: z.array(z.string()).optional(),
     },
   },
   async (input) => {

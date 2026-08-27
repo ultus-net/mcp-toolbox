@@ -1,5 +1,6 @@
 import { checkShellPolicy } from "./shell-policy.js";
 import { checkProtectedPath, secretIn } from "./path-policy.js";
+import { checkGitPolicy } from "./git-policy.js";
 
 export type GuardAction = "shell" | "file_write" | "git" | "network";
 
@@ -9,6 +10,8 @@ export interface GuardCheckInput {
   path?: string;
   workspaceRoot?: string;
   content?: string;
+  currentBranch?: string;
+  protectedBranches?: string[];
 }
 
 export interface GuardDecision {
@@ -18,6 +21,10 @@ export interface GuardDecision {
 }
 
 export function checkPolicy(input: GuardCheckInput): GuardDecision {
+  if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
+    const git = checkGitPolicy(input.command, { currentBranch: input.currentBranch, protectedBranches: input.protectedBranches });
+    if (git) return git;
+  }
   if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
     const shell = checkShellPolicy(input.command);
     if (shell) return shell;
