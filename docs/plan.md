@@ -11,7 +11,7 @@ Make the reusable parts of `opencode-workflow-guard` available to teams using di
 - Keep policy evaluation pure: no shell execution and no action proxying in the policy engine.
 - Add adversarial tests for quoting, wrappers, path traversal, symlinks, and compound commands as each policy is ported.
 
-The initial portable core now includes destructive shell policies, symlink-aware protected/secret paths, secret-content checks, and protected-branch Git command parsing. Host adapters supply runtime context such as the current branch rather than the policy engine executing Git itself.
+The initial portable core now includes destructive shell policies, symlink-aware protected/secret paths, secret-content checks, protected-branch Git parsing, interpreter payload inspection, and deterministic workspace-boundary/tamper checks. The upstream parity audit and remaining portable candidates are tracked in [Policy Coverage](policy-coverage.md). Host adapters supply runtime context rather than the policy engine executing Git or querying external services itself.
 
 ## Phase 2: client adapters
 

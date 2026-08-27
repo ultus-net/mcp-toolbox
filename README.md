@@ -10,6 +10,8 @@ This repository is an early port. The current `guard_check` tool implements the 
 
 Most importantly, connecting an MCP server does not make it an interceptor for every native tool a coding client can execute. Hard enforcement depends on integration support in the host. See [Compatibility](docs/compatibility.md) and [Plan](docs/plan.md).
 
+The upstream policy parity audit is documented in [Policy Coverage](docs/policy-coverage.md), including the explicit boundary between deterministic core rules and host-owned runtime state.
+
 ## Tools
 
 - `guard_check`: evaluates a proposed `shell`, `file_write`, `git`, or `network` action and returns `allow`, `deny`, or `ask` with a machine-readable policy ID.
