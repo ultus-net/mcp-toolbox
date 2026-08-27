@@ -2,7 +2,7 @@ import { checkProtectedPath } from "./path-policy.js";
 
 function interpreterPayloads(segment: string): string[] {
   const payloads: string[] = [];
-  const inline = segment.match(/\b(?:python3?|node|perl|ruby|osascript|bash|sh|zsh|dash|ksh)\s+(?:-[a-zA-Z]*[ce])\s*(?:"([^"]*)"|'([^']*)')/i);
+  const inline = segment.match(/\b(?:python3?|node|perl|ruby|osascript|bash|sh|zsh|dash|ksh)\s+(?:(?:(?:-W|--input-type)\s+[^\s"']+|-[^\s"']+)\s+)*(?:-[a-zA-Z]*[ce]|--eval)\s*(?:"([^"]*)"|'([^']*)')/i);
   if (inline?.[1] || inline?.[2]) payloads.push(inline[1] ?? inline[2] ?? "");
   const heredoc = segment.match(/\b(?:python3?|node|perl|ruby|osascript|bash|sh|zsh|dash|ksh)\b[^\n]*<<(-?)\s*(?:'([^'\n]+)'|"([^"\n]+)"|([^\s'";|&()<>\n]+))[^\n]*\n/i);
   if (heredoc) {

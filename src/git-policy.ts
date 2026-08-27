@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { splitShellSegments, unwrapShellWords } from "./shell.js";
 
 const gitWriteRe = /\bgit\s+(?:add|rm|mv|commit|merge|rebase|cherry-pick|revert|stash\s+pop|apply|am|restore|reset|update-ref|filter-branch)\b|\bgit\s+tag\s+(?!--?list\b|-l\b)|\bgit\s+checkout\s+(?!-b\b)|\bgit\s+branch\s+(?:[^|;&]*\s)?-[dDM]\b/;
@@ -7,7 +8,7 @@ const gitBooleanOptions = new Set(["--version", "--help", "--no-pager", "-p", "-
 function normalizedGitSegments(command: string): string[] {
   return splitShellSegments(command).flatMap((segment) => {
     const words = unwrapShellWords(segment);
-    if (words[0] !== "git") return [];
+    if (basename(words[0] ?? "") !== "git") return [];
     let i = 1;
     while (i < words.length) {
       const option = words[i]!;
@@ -31,7 +32,7 @@ function protectedBranchesIn(context: GitPolicyContext): Set<string> {
 function hasUnsafeGitAlias(command: string): boolean {
   return splitShellSegments(command).some((segment) => {
     const words = unwrapShellWords(segment);
-    const gitIndex = words.findIndex((word, index) => word === "git" && words.slice(0, index).every((prefix) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(prefix)));
+    const gitIndex = words.findIndex((word, index) => basename(word) === "git" && words.slice(0, index).every((prefix) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(prefix)));
     if (gitIndex < 0) return false;
     const args = words.slice(gitIndex + 1);
     return args.some((arg, index) => /^-calias\./i.test(arg) || /^--config-env=alias\./i.test(arg) || ((arg === "-c" || arg === "--config-env") && /^alias\./i.test(args[index + 1] ?? "")));
@@ -45,9 +46,11 @@ function pushedProtectedBranchIn(command: string, protectedBranches: Set<string>
     const words = normalized.split(" ");
     if (words[1] !== "push") continue;
     for (const branch of protectedBranches) {
-      const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const re = new RegExp(`(?:^|\\s)\\+?[\\w./-]*:${escaped}(?![\\w./-])|(?:\\s|\\/)${escaped}(?![\\w./-])`);
-      if (re.test(words.slice(2).join(" "))) return branch;
+      for (const refspec of words.slice(2).filter((word) => !word.startsWith("-"))) {
+        const destination = refspec.includes(":") ? refspec.slice(refspec.lastIndexOf(":") + 1) : refspec;
+        const normalizedDestination = destination.replace(/^refs\/heads\//, "");
+        if (normalizedDestination === branch) return branch;
+      }
     }
   }
   return undefined;

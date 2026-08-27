@@ -88,12 +88,22 @@ function isGuardConfigurationPath(path: string, workspaceRoot?: string): boolean
   return TOOL_JSON_RE.test(resolved) || /(?:^|\/)workflow-guard\.jsonc?$/i.test(resolved) || TOOL_DIR_RE.test(resolved) || TOOL_CONFIG_RE.test(resolved);
 }
 
-export function checkBoundaryPolicy(command: string, workspaceRoot?: string): { policy: string; decision: "deny"; reason: string } | undefined {
+export function checkBoundaryPolicy(command: string, workspaceRoot?: string, depth = 0): { policy: string; decision: "deny"; reason: string } | undefined {
+  if (depth >= 16) return { decision: "deny", policy: "workspace-boundary", reason: "Nested shell depth exceeds deterministic inspection limit." };
   const normalized = decodeShellEscapes(command).replace(/'([^']*)'/g, "$1").replace(/"([^"]*)"/g, "$1").replace(new RegExp(`${TOOL}\\.jso[?]|${TOOL}\\.[?*]`, "gi"), `${TOOL}.json`);
   const toolCommand = new RegExp(`(?:^|\\s)${TOOL}\\s+(?:-[^|;&]*\\s+)*(?:auth|config|permission)\\b`, "i");
   const autoCommand = new RegExp(`(?:^|\\s)${TOOL}\\s+(?:run\\s+)?--auto\\b`, "i");
   if (toolCommand.test(normalized) || autoCommand.test(normalized)) return { decision: "deny", policy: "guard-tamper", reason: "Changing host auth, permissions, or guard configuration from the agent is not allowed." };
   for (const segment of splitShellSegments(command)) {
+    const words = unwrapShellWords(segment);
+    const executable = basename(words[0] ?? "");
+    if (/^(?:ba|z|da|k)?sh$/i.test(executable)) {
+      const commandFlag = words.findIndex((word, index) => index > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(word));
+      if (commandFlag >= 0 && words[commandFlag + 1]) {
+        const nested = checkBoundaryPolicy(words[commandFlag + 1]!, workspaceRoot, depth + 1);
+        if (nested) return nested;
+      }
+    }
     const { targets, moveSources } = mutationPaths(segment);
     for (const path of [...targets, ...moveSources]) {
       if (isGuardConfigurationPath(path, workspaceRoot)) return { decision: "deny", policy: "guard-tamper", reason: "Modifying host or workflow-guard configuration from the agent is not allowed." };
