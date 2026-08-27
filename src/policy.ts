@@ -2,7 +2,7 @@ import { checkShellPolicy } from "./shell-policy.js";
 import { checkProtectedPath, secretIn } from "./path-policy.js";
 import { checkGitPolicy } from "./git-policy.js";
 import { checkInterpreterPolicy } from "./interpreter-policy.js";
-import { checkBoundaryPolicy } from "./boundary-policy.js";
+import { checkBoundaryPolicy, isPathOutsideWorkspace } from "./boundary-policy.js";
 
 export type GuardAction = "shell" | "file_write" | "git" | "network";
 
@@ -12,6 +12,7 @@ export interface GuardCheckInput {
   path?: string;
   workspaceRoot?: string;
   content?: string;
+  patchText?: string;
   currentBranch?: string;
   protectedBranches?: string[];
 }
@@ -20,6 +21,17 @@ export interface GuardDecision {
   decision: "allow" | "deny" | "ask";
   policy: string;
   reason: string;
+}
+
+export function extractPatchPaths(patchText: string): string[] {
+  const paths: string[] = [];
+  for (const match of patchText.matchAll(/^\*\*\*\s+(?:Add File|Update File|Delete File|Move to|Move from):\s*(.+?)\s*$/gm)) {
+    if (match[1]) paths.push(match[1]);
+  }
+  for (const match of patchText.matchAll(/^(?:---|\+\+\+)\s+(?:[ab]\/)?(\S+)/gm)) {
+    if (match[1] && match[1] !== "/dev/null") paths.push(match[1]);
+  }
+  return paths;
 }
 
 export function checkPolicy(input: GuardCheckInput): GuardDecision {
@@ -40,15 +52,20 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
     if (shell) return shell;
   }
 
-  const path = input.path?.trim() ?? "";
+  const paths = [input.path?.trim() ?? "", ...(input.action === "file_write" && input.patchText ? extractPatchPaths(input.patchText) : [])].filter(Boolean);
 
-  const protectedReason = path ? checkProtectedPath(path, input.workspaceRoot) : undefined;
-  if (protectedReason) {
-    return {
-      decision: "deny",
-      policy: "protected-path",
-      reason: protectedReason,
-    };
+  for (const path of paths) {
+    const protectedReason = checkProtectedPath(path, input.workspaceRoot);
+    if (protectedReason) {
+      return {
+        decision: "deny",
+        policy: "protected-path",
+        reason: protectedReason,
+      };
+    }
+    if (input.action === "file_write" && input.patchText && input.workspaceRoot && isPathOutsideWorkspace(path, input.workspaceRoot)) {
+      return { decision: "deny", policy: "workspace-boundary", reason: `Patch target '${path}' is outside workspace '${input.workspaceRoot}'.` };
+    }
   }
 
   if (input.action === "file_write" && input.content) {

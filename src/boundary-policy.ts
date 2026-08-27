@@ -33,7 +33,7 @@ function realPathWithMissingTail(path: string): string | undefined {
   }
 }
 
-function outsideWorkspace(path: string, root: string): boolean {
+export function isPathOutsideWorkspace(path: string, root: string): boolean {
   const expanded = expandedTarget(path);
   if (expanded === undefined) return true;
   const resolved = resolve(root, expanded);
@@ -108,7 +108,7 @@ export function checkBoundaryPolicy(command: string, workspaceRoot?: string, dep
     for (const path of [...targets, ...moveSources]) {
       if (isGuardConfigurationPath(path, workspaceRoot)) return { decision: "deny", policy: "guard-tamper", reason: "Modifying host or workflow-guard configuration from the agent is not allowed." };
       if (checkProtectedPath(path, workspaceRoot)) return { decision: "deny", policy: "protected-shell-path", reason: `Shell mutation targets protected path '${path}'.` };
-      if (workspaceRoot && outsideWorkspace(path, workspaceRoot)) return { decision: "deny", policy: "workspace-boundary", reason: `Shell mutation targets '${path}' outside workspace '${workspaceRoot}'.` };
+      if (workspaceRoot && isPathOutsideWorkspace(path, workspaceRoot)) return { decision: "deny", policy: "workspace-boundary", reason: `Shell mutation targets '${path}' outside workspace '${workspaceRoot}'.` };
     }
   }
   return undefined;

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { checkPolicy } from "../src/policy.js";
+import { checkPolicy, extractPatchPaths } from "../src/policy.js";
 import { evaluateClaudePreToolUse } from "../src/claude-hook.js";
 
 test("blocks sensitive paths", () => {
@@ -26,6 +26,22 @@ test("blocks secret material in file writes", () => {
   const result = checkPolicy({ action: "file_write", path: "notes.txt", content: key });
   assert.equal(result.decision, "deny");
   assert.equal(result.policy, "secret-content");
+});
+
+test("checks every target in multi-file patches", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-patch-"));
+  const patch = [
+    "*** Update File: src/index.ts",
+    "*** Move from: src/old.ts",
+    "*** Move to: .env",
+  ].join("\n");
+  assert.deepEqual(extractPatchPaths(patch), ["src/index.ts", "src/old.ts", ".env"]);
+  assert.equal(checkPolicy({ action: "file_write", patchText: patch }).decision, "deny");
+
+  const unified = ["--- /dev/null", "+++ b/src/new.ts", "--- a/src/old.ts", "+++ b/.ssh/config"].join("\n");
+  assert.deepEqual(extractPatchPaths(unified), ["src/new.ts", "src/old.ts", ".ssh/config"]);
+  assert.equal(checkPolicy({ action: "file_write", patchText: unified }).decision, "deny");
+  assert.equal(checkPolicy({ action: "file_write", patchText: "*** Add File: ../outside.txt", workspaceRoot: root }).policy, "workspace-boundary");
 });
 
 test("requires approval for external effects", () => {
