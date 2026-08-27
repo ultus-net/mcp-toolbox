@@ -1,3 +1,5 @@
+import { checkShellPolicy } from "./shell-policy.js";
+
 export type GuardAction = "shell" | "file_write" | "git" | "network";
 
 export interface GuardCheckInput {
@@ -21,6 +23,11 @@ const protectedPaths = [
 ];
 
 export function checkPolicy(input: GuardCheckInput): GuardDecision {
+  if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
+    const shell = checkShellPolicy(input.command);
+    if (shell) return shell;
+  }
+
   const path = input.path?.trim() ?? "";
 
   if (path && protectedPaths.some((pattern) => pattern.test(path))) {

@@ -11,6 +11,8 @@ Make the reusable parts of `opencode-workflow-guard` available to teams using di
 - Keep policy evaluation pure: no shell execution and no action proxying in the policy engine.
 - Add adversarial tests for quoting, wrappers, path traversal, symlinks, and compound commands as each policy is ported.
 
+In progress: the initial shell-policy slice now covers selected destructive operations, package hygiene checks, interactive terminal commands, and dynamic shell forms that prevent deterministic inspection. The destructive-operation category is not yet a complete port. Next are symlink-aware protected/secret paths and protected-branch push parsing.
+
 ## Phase 2: client adapters
 
 - Claude Code: provide a `PreToolUse` integration that turns policy decisions into host `allow`, `deny`, and `ask` outcomes.
