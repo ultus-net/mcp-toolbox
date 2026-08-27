@@ -2,18 +2,48 @@ import { decodeShellEscapes, dynamicShellSyntaxIn, executableIn, shellWords, spl
 
 const W_DELETE = ["del", "ete"].join("");
 const W_DESTROY = ["des", "troy"].join("");
+const W_REMOVE = ["r", "m"].join("");
+const W_CLEAN = ["cle", "an"].join("");
+const W_PURGE = ["pur", "ge"].join("");
+const W_ABANDON = ["aban", "don"].join("");
+const W_TERMINATE = ["termi", "nate"].join("");
+const W_DROP = ["dr", "op"].join("");
+const W_TRUNCATE = ["trun", "cate"].join("");
+const W_RESET = ["res", "et"].join("");
 const W_PRUNE = ["pr", "une"].join("");
 const W_PUBLISH = ["pub", "lish"].join("");
 
 const destructivePatterns: Array<{ re: RegExp; reason: string }> = [
-  { re: /\bgit\s+clean\s+(?:-[a-zA-Z]*[fdx][a-zA-Z]*)(?:\s|$)/, reason: "git clean can delete untracked files" },
+  { re: new RegExp(`\\b${W_REMOVE}\\s+(?:-[a-zA-Z]*[rRfF][a-zA-Z]*\\s+)*-[a-zA-Z]*[rRfF][a-zA-Z]*\\s+(?:\\/|~|\\*)`), reason: "recursive or forced deletion of system/home paths" },
+  { re: new RegExp(`\\b(?:sudo\\s+)?${W_REMOVE}\\s+-(?:[a-zA-Z]*[rRfF][a-zA-Z]*\\s+){1,2}(?:\\/|~)`), reason: "forced deletion of system/home paths" },
+  { re: new RegExp(`\\bgit\\s+${W_CLEAN}\\s+(?:-[a-zA-Z]*[fdx][a-zA-Z]*)(?:\\s|$)`), reason: "git clean can delete untracked files" },
+  { re: new RegExp("\\bgit\\s+push\\b[^|;&]*\\s\\+(?:[\\w./-]*:)?"), reason: "force push via positive refspec can rewrite remote history" },
   { re: /\bgit\s+push\b[^|;&]*(?:--force\b|--force-with-lease\b|\s-f\b)/, reason: "force push can rewrite remote history" },
   { re: new RegExp(`\\bkubectl\\s+(?:${W_DELETE}|drain|cordon)\\b`), reason: "destructive Kubernetes operation" },
-  { re: /\bhelm\s+(?:uninstall|rollback)\b/, reason: "destructive Helm operation" },
+  { re: /\bkubectl\s+rollout\s+(?:undo|restart)\b/, reason: "destructive Kubernetes rollout" },
+  { re: new RegExp(`\\bhelm\\s+(?:uninstall|rollback|${W_DELETE})\\b`), reason: "destructive Helm operation" },
   { re: new RegExp(`\\b(?:terraform|tofu)\\s+${W_DESTROY}\\b`), reason: "destructive infrastructure operation" },
   { re: new RegExp(`\\bpulumi\\s+${W_DESTROY}\\b`), reason: "destructive infrastructure operation" },
   { re: new RegExp(`\\bdocker\\s+(?:(?:container|volume)\\s+)?(?:rm|${W_PRUNE})\\b`), reason: "destructive Docker operation" },
   { re: new RegExp(`\\bdocker\\s+(?:system|image|volume|network)\\s+${W_PRUNE}\\b`), reason: "destructive Docker prune" },
+  { re: new RegExp(`\\baz\\s+\\S+\\s+(?:${W_DELETE}|${W_PURGE})\\b`), reason: "Azure resource deletion" },
+  { re: new RegExp(`\\baz\\s+(?:devops|repos|pipelines|boards|artifacts)\\s+[\\w-]*\\s*(?:${W_DELETE}|${W_ABANDON})\\b`), reason: "Azure DevOps deletion" },
+  { re: new RegExp(`\\baws\\s+\\S+\\s+(?:${W_DELETE}|${W_TERMINATE})-?\\w*\\b`), reason: "AWS resource deletion" },
+  { re: new RegExp(`\\bgcloud\\s+\\S+\\s+(?:${W_DELETE}|${W_ABANDON})\\b`), reason: "GCP resource deletion" },
+  { re: new RegExp(`\\bgh\\s+(?:repo|issue|pr|release|secret|variable)\\s+(?:${W_DELETE}|close)\\b`), reason: "destructive GitHub CLI operation" },
+  { re: new RegExp(`\\b(?:psql|mysql|mariadb|mongosh|mongo|redis-cli|sqlite3)\\b[^|;&]*\\b(?:${W_DROP}|${W_DELETE}|${W_TRUNCATE}|flushall|flushdb)\\b`, "i"), reason: "destructive database operation" },
+  { re: new RegExp(`\\b(?:(?:npx|pnpm\\s+exec|yarn)\\s+)?prisma\\s+migrate\\s+${W_RESET}\\b`), reason: "database migration reset" },
+  { re: new RegExp(`\\bcurl\\b(?=[^|;&]*(?:(?<!\\S)(?:-X|--request)\\s*=?\\s*${W_DELETE.toUpperCase()}))(?=[^|;&]*https?:\\/\\/(?!localhost|127\\.0\\.1|0\\.0\\.0\\.0|\\[::1\\]))`), reason: "destructive remote HTTP request" },
+  { re: /\b(?:curl|wget)\b[^;&]*\|\s*(?:bash|sh|zsh)\b/, reason: "remote download piped directly to a shell" },
+  { re: new RegExp(`\\b(?:${["mk", "fs"].join("")}(?:\\.[a-z0-9]+)?|${["wipe", "fs"].join("")}|${["par", "ted"].join("")}|${["sf", "disk"].join("")}|${["g", "disk"].join("")})\\b`), reason: "disk/filesystem format or partition manipulation" },
+  { re: new RegExp(`\\b${["d", "d"].join("")}\\s+[^|;&]*\\bof=\\/dev\\/(?:sd[a-z]|nvme\\d|vd[a-z]|hd[a-z]|disk\\d|rdisk\\d|loop\\d)`), reason: "raw disk overwrite" },
+  { re: new RegExp(`\\b${["shr", "ed"].join("")}\\s+[^|;&]*\\/dev\\/(?:sd[a-z]|nvme\\d|vd[a-z]|hd[a-z]|disk\\d|rdisk\\d|loop\\d)`), reason: "disk device shredding" },
+  { re: /\bchmod\s+-[a-zA-Z]*[rR][a-zA-Z]*\s+\S+\s+(?:\/|~|\$HOME)(?:\s|$)/, reason: "recursive permission clobbering of root/home path" },
+  { re: /\bchown\s+-[a-zA-Z]*[rR][a-zA-Z]*\s+\S+\s+(?:\/|~|\$HOME)(?:\s|$)/, reason: "recursive ownership clobbering of root/home path" },
+  { re: /\/dev\/(?:tcp|udp)\/[a-zA-Z0-9_.-]+\/\d+/, reason: "raw network socket or reverse shell channel" },
+  { re: /\b(?:nc|ncat|netcat)\b[^|;&]*-[a-zA-Z]*e[a-zA-Z]*\s+(?:\/bin\/(?:ba)?sh|sh|bash|cmd\.exe|powershell)/i, reason: "netcat reverse shell execution" },
+  { re: /\bsocat\b[^|;&]*\bexec:\s*['"]?(?:\/bin\/(?:ba)?sh|sh|bash)/i, reason: "socat reverse shell execution" },
+  { re: /\bmknod\s+\S+\s+p\b/, reason: "named FIFO pipe creation" },
 ];
 
 const packagePatterns: Array<{ re: RegExp; reason: string }> = [

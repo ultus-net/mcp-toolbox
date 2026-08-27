@@ -15,7 +15,7 @@ Most importantly, connecting an MCP server does not make it an interceptor for e
 - `guard_check`: evaluates a proposed `shell`, `file_write`, `git`, or `network` action and returns `allow`, `deny`, or `ask` with a machine-readable policy ID.
 - `guard_status`: reports the server's current enforcement mode. It explicitly identifies this scaffold as host-dependent policy advice.
 
-The first portable shell slice covers selected destructive infrastructure/container/Git operations, selected unsafe package-management operations, interactive commands that can hang agent sessions, and denial of command/process substitution or ambiguous shell syntax that prevents deterministic inspection.
+The portable shell policies cover the deterministic destructive-operation families from `opencode-workflow-guard`, selected unsafe package-management operations, interactive commands that can hang agent sessions, and denial of command/process substitution or ambiguous shell syntax that prevents deterministic inspection.
 
 ## Development
 
