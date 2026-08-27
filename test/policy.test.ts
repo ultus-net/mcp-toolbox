@@ -90,6 +90,7 @@ test("asks for interactive terminal commands instead of allowing a hang", () => 
   assert.equal(checkPolicy({ action: "shell", command: "vim README.md" }).decision, "ask");
   assert.equal(checkPolicy({ action: "shell", command: "env EDITOR=nano vim README.md" }).decision, "ask");
   assert.equal(checkPolicy({ action: "shell", command: "command less README.md" }).decision, "ask");
+  assert.equal(checkPolicy({ action: "shell", command: "busybox less README.md" }).decision, "ask");
   assert.equal(checkPolicy({ action: "shell", command: "sudo ls" }).decision, "ask");
   assert.equal(checkPolicy({ action: "shell", command: "apt-get install jq" }).decision, "ask");
   assert.equal(checkPolicy({ action: "shell", command: "apt-get install -y jq" }).decision, "allow");

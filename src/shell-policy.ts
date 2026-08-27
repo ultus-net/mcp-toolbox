@@ -106,19 +106,21 @@ function normalizedKubectlCommands(command: string): string {
   return normalized.join(" ; ");
 }
 
-function interactiveReason(command: string): string | undefined {
+function interactiveReason(command: string, depth = 0): string | undefined {
+  if (depth >= 16) return undefined;
   for (const segment of splitShellSegments(command)) {
     const words = shellWords(segment);
     const unwrapped = unwrapShellWords(segment);
     const executable = executableIn(segment);
     if (words.includes("sudo")) return "sudo may wait for an interactive password prompt";
     if (/^(?:nano|vim?|emacs|pico|joe|micro|less|more|most|htop|btop|atop|glances)$/i.test(executable)) return "interactive terminal command can hang an agent session";
+    if (executable === "busybox" && /^(?:less|more)$/i.test(unwrapped[1] ?? "")) return "terminal pager can hang an agent session";
     if (executable === "top" && !words.some((word) => /^(?:--batch|-[A-Za-z]*b[A-Za-z]*)$/.test(word))) return "interactive process monitor can hang an agent session";
     if (/^(?:ba|z|da|k)?sh$/i.test(executable)) {
       const commandFlag = unwrapped.findIndex((word, index) => index > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(word));
-      if (commandFlag >= 0 && unwrapped[commandFlag + 1] && interactiveReason(unwrapped[commandFlag + 1]!)) return "nested shell command can open an interactive terminal program";
+      if (commandFlag >= 0 && unwrapped[commandFlag + 1] && interactiveReason(unwrapped[commandFlag + 1]!, depth + 1)) return "nested shell command can open an interactive terminal program";
     }
-    if (executable === "eval" && unwrapped.length > 1 && interactiveReason(unwrapped.slice(1).join(" "))) return "eval can open an interactive terminal program";
+    if (executable === "eval" && unwrapped.length > 1 && interactiveReason(unwrapped.slice(1).join(" "), depth + 1)) return "eval can open an interactive terminal program";
   }
   if (/\bgit\s+(?:rebase\s+-[a-zA-Z]*i|add\s+-[a-zA-Z]*p)/i.test(command)) return "interactive Git operation can hang an agent session";
   if (/\bnpm\s+init\b(?!\s+(?:-y|--yes|--force))\b/i.test(command)) return "npm init requires an interactive prompt";
