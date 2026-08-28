@@ -12,7 +12,7 @@ server.registerTool(
   {
     description: "Evaluate a proposed coding-agent action. Advisory unless the host wires the result into enforcement.",
     inputSchema: {
-      action: z.enum(["shell", "file_write", "git", "network"]),
+      action: z.enum(["shell", "file_write", "git", "network", "mcp"]),
       command: z.string().optional(),
       path: z.string().optional(),
       workspaceRoot: z.string().optional(),
@@ -21,6 +21,7 @@ server.registerTool(
       currentBranch: z.string().optional(),
       protectedBranches: z.array(z.string()).optional(),
       trustedRole: z.string().optional(),
+      toolName: z.string().optional(),
     },
   },
   async (input) => {

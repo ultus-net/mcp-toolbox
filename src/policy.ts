@@ -3,8 +3,9 @@ import { checkProtectedPath, secretIn } from "./path-policy.js";
 import { checkGitPolicy, hasGitMutation, protectedBranchWriteReason } from "./git-policy.js";
 import { checkInterpreterPolicy } from "./interpreter-policy.js";
 import { checkBoundaryPolicy, isPathOutsideWorkspace, shellHasFileMutation } from "./boundary-policy.js";
+import { mcpMutationTarget } from "./mcp-policy.js";
 
-export type GuardAction = "shell" | "file_write" | "git" | "network";
+export type GuardAction = "shell" | "file_write" | "git" | "network" | "mcp";
 
 export interface GuardCheckInput {
   action: GuardAction;
@@ -16,6 +17,7 @@ export interface GuardCheckInput {
   currentBranch?: string;
   protectedBranches?: string[];
   trustedRole?: string;
+  toolName?: string;
 }
 
 export interface GuardDecision {
@@ -104,6 +106,11 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
       policy: "external-side-effect",
       reason: "External side effects should require explicit user approval.",
     };
+  }
+
+  if (input.action === "mcp" && input.toolName) {
+    const target = mcpMutationTarget(input.toolName);
+    if (target) return { decision: "deny", policy: "live-mcp-mutation", reason: `${input.toolName} mutates ${target}, a live system.` };
   }
 
   return {

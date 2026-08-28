@@ -48,6 +48,14 @@ test("requires approval for external effects", () => {
   assert.equal(checkPolicy({ action: "network", command: "external request" }).decision, "ask");
 });
 
+test("classifies GitHub and Azure MCP mutations without blocking reads", () => {
+  assert.equal(checkPolicy({ action: "mcp", toolName: "github_create_issue" }).policy, "live-mcp-mutation");
+  assert.equal(checkPolicy({ action: "mcp", toolName: "azure_devops_update_work_item" }).policy, "live-mcp-mutation");
+  assert.equal(checkPolicy({ action: "mcp", toolName: "github_list_issues" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "mcp", toolName: "github_get_and_update_issue" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "mcp", toolName: "slack_create_message" }).decision, "allow");
+});
+
 test("allows an ordinary local action", () => {
   assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts" }).decision, "allow");
 });

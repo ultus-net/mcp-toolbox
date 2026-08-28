@@ -12,10 +12,10 @@ This matrix classifies the upstream `opencode-workflow-guard` behavior by where 
 - Multi-target patch validation and secret-source transfer laundering detection.
 - Protected-branch enforcement for direct file mutations when the host supplies branch context.
 - Read-only role enforcement for deterministic mutation actions when the host supplies a trusted role.
+- GitHub/Azure DevOps MCP mutation classification from host-supplied tool names.
 
 ## Remaining portable candidates
 
-- MCP tool mutation classification for GitHub/Azure mutation tools rather than treating all network behavior identically.
 - PR-create/body preflight parsing, including malformed literal line-break escapes.
 - Manifest/lockfile and documentation preflight decisions when the host supplies changed-path facts and project requirements.
 - Todo lifecycle/no-active-todo predicates if workflow-state facts become part of the portable API.
