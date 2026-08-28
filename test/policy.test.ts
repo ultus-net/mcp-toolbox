@@ -105,6 +105,22 @@ test("blocks Git mutations and pushes involving protected branches", () => {
   assert.equal(checkPolicy({ action: "git", command: "git config note push origin main" }).decision, "allow");
 });
 
+test("preflights GitHub and Azure PR creation body syntax", () => {
+  const slash = "\\";
+  assert.equal(checkPolicy({ action: "shell", command: `gh pr create --title change --body "Summary:${slash}n- item"` }).policy, "pr-preflight");
+  assert.equal(checkPolicy({ action: "shell", command: `az repos pr create --title change --description "Summary:${slash}r${slash}n- item"` }).policy, "pr-preflight");
+  assert.equal(checkPolicy({ action: "shell", command: `gh --repo org/repo pr create --body "Summary:${slash}n- item"` }).policy, "pr-preflight");
+  assert.equal(checkPolicy({ action: "shell", command: `az --org https://example.test repos pr create --description "Summary:${slash}n- item"` }).policy, "pr-preflight");
+  assert.equal(checkPolicy({ action: "shell", command: `env GH_HOST=github.com gh pr create --body "Summary:${slash}n- item"` }).policy, "pr-preflight");
+  assert.equal(checkPolicy({ action: "shell", command: `env -S "gh pr create --body ${slash}"Summary:${slash}${slash}n- item${slash}""` }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: `env -S "gh pr create --body ${slash}"Summary:${slash}${slash}${slash}${slash}n- item${slash}""` }).policy, "pr-preflight");
+  assert.equal(checkPolicy({ action: "shell", command: "gh pr create --title change --body $'Summary:\\n- item'" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: "gh pr view --json body" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: `echo gh pr create --body "Summary:${slash}n- item"` }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: `gh --repo pr create --body "Summary:${slash}n- item"` }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: `az --project repos pr create --description "Summary:${slash}n- item"` }).decision, "allow");
+});
+
 test("blocks inline Git aliases that can hide guarded operations", () => {
   assert.equal(checkPolicy({ action: "git", command: "git -c alias.ship=push ship origin main" }).policy, "unsafe-git-alias");
 });

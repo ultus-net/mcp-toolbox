@@ -4,6 +4,7 @@ import { checkGitPolicy, hasGitMutation, protectedBranchWriteReason } from "./gi
 import { checkInterpreterPolicy } from "./interpreter-policy.js";
 import { checkBoundaryPolicy, isPathOutsideWorkspace, shellHasFileMutation } from "./boundary-policy.js";
 import { mcpMutationTarget } from "./mcp-policy.js";
+import { checkPrCreatePreflight } from "./pr-policy.js";
 
 export type GuardAction = "shell" | "file_write" | "git" | "network" | "mcp";
 
@@ -61,6 +62,10 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
   if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
     const shell = checkShellPolicy(input.command);
     if (shell) return shell;
+  }
+  if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
+    const pr = checkPrCreatePreflight(input.command);
+    if (pr) return pr;
   }
 
   if (isReadOnlyRole(input.trustedRole)) {
