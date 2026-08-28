@@ -87,6 +87,20 @@ function mutationPaths(segment: string): { targets: string[]; moveSources: strin
   return { targets, moveSources, secretSources };
 }
 
+export function shellHasFileMutation(command: string, depth = 0): boolean {
+  if (depth >= 16) return true;
+  return splitShellSegments(command).some((segment) => {
+    const words = unwrapShellWords(segment);
+    const executable = basename(words[0] ?? "");
+    if (/^(?:ba|z|da|k)?sh$/i.test(executable)) {
+      const commandFlag = words.findIndex((word, index) => index > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(word));
+      if (commandFlag >= 0 && words[commandFlag + 1] && shellHasFileMutation(words[commandFlag + 1]!, depth + 1)) return true;
+    }
+    const { targets, moveSources } = mutationPaths(segment);
+    return targets.length > 0 || moveSources.length > 0;
+  });
+}
+
 function isGuardConfigurationPath(path: string, workspaceRoot?: string): boolean {
   const expanded = expandedTarget(path);
   if (expanded === undefined) return true;

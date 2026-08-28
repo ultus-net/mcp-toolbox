@@ -1,8 +1,8 @@
 import { checkShellPolicy } from "./shell-policy.js";
 import { checkProtectedPath, secretIn } from "./path-policy.js";
-import { checkGitPolicy, protectedBranchWriteReason } from "./git-policy.js";
+import { checkGitPolicy, hasGitMutation, protectedBranchWriteReason } from "./git-policy.js";
 import { checkInterpreterPolicy } from "./interpreter-policy.js";
-import { checkBoundaryPolicy, isPathOutsideWorkspace } from "./boundary-policy.js";
+import { checkBoundaryPolicy, isPathOutsideWorkspace, shellHasFileMutation } from "./boundary-policy.js";
 
 export type GuardAction = "shell" | "file_write" | "git" | "network";
 
@@ -15,12 +15,21 @@ export interface GuardCheckInput {
   patchText?: string;
   currentBranch?: string;
   protectedBranches?: string[];
+  trustedRole?: string;
 }
 
 export interface GuardDecision {
   decision: "allow" | "deny" | "ask";
   policy: string;
   reason: string;
+}
+
+const READ_ONLY_ROLES = new Set(["reviewer", "planner", "advisor", "critic", "explorer", "scout", "evaluator"]);
+
+export function isReadOnlyRole(role?: string): boolean {
+  if (!role) return false;
+  const normalized = role.toLowerCase().trim();
+  return READ_ONLY_ROLES.has(normalized) || [...READ_ONLY_ROLES].some((candidate) => normalized.includes(candidate));
 }
 
 export function extractPatchPaths(patchText: string): string[] {
@@ -52,6 +61,16 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
     if (shell) return shell;
   }
 
+  if (isReadOnlyRole(input.trustedRole)) {
+    if (input.action === "git" && input.command?.trim() && hasGitMutation(input.command)) {
+      return { decision: "deny", policy: "read-only-role", reason: `Read-only role '${input.trustedRole}' cannot mutate Git state.` };
+    }
+    if (input.action === "shell" && input.command?.trim()) {
+      if (shellHasFileMutation(input.command)) return { decision: "deny", policy: "read-only-role", reason: `Read-only role '${input.trustedRole}' cannot perform shell file mutations.` };
+      if (hasGitMutation(input.command)) return { decision: "deny", policy: "read-only-role", reason: `Read-only role '${input.trustedRole}' cannot mutate Git state.` };
+    }
+  }
+
   const paths = [input.path?.trim() ?? "", ...(input.action === "file_write" && input.patchText ? extractPatchPaths(input.patchText) : [])].filter(Boolean);
 
   for (const path of paths) {
@@ -76,6 +95,7 @@ export function checkPolicy(input: GuardCheckInput): GuardDecision {
   if (input.action === "file_write") {
     const branchReason = protectedBranchWriteReason({ currentBranch: input.currentBranch, protectedBranches: input.protectedBranches });
     if (branchReason) return { decision: "deny", policy: "protected-branch-write", reason: branchReason };
+    if (isReadOnlyRole(input.trustedRole)) return { decision: "deny", policy: "read-only-role", reason: `Read-only role '${input.trustedRole}' cannot perform file mutations.` };
   }
 
   if (input.action === "network") {

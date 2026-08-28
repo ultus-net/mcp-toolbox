@@ -34,6 +34,18 @@ export function protectedBranchWriteReason(context: GitPolicyContext): string | 
   return `Direct changes on protected branch '${context.currentBranch}' are not allowed. Create a feature branch first.`;
 }
 
+export function hasGitMutation(command: string, depth = 0): boolean {
+  if (depth >= 16) return true;
+  const normalized = normalizedGitSegments(command).join(" ; ");
+  if (gitWriteRe.test(normalized) || /\bgit\s+(?:switch|checkout)\b/.test(normalized)) return true;
+  return splitShellSegments(command).some((segment) => {
+    const words = unwrapShellWords(segment);
+    if (!/^(?:ba|z|da|k)?sh$/i.test(basename(words[0] ?? ""))) return false;
+    const commandFlag = words.findIndex((word, index) => index > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(word));
+    return commandFlag >= 0 && Boolean(words[commandFlag + 1]) && hasGitMutation(words[commandFlag + 1]!, depth + 1);
+  });
+}
+
 function hasUnsafeGitAlias(command: string): boolean {
   return splitShellSegments(command).some((segment) => {
     const words = unwrapShellWords(segment);

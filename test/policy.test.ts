@@ -52,6 +52,20 @@ test("allows an ordinary local action", () => {
   assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts" }).decision, "allow");
 });
 
+test("enforces host-supplied read-only roles on mutations", () => {
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", trustedRole: "reviewer" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", trustedRole: "Senior Explorer Agent" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "git", command: "git commit -m change", trustedRole: "planner" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "git", command: "git status", trustedRole: "planner" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: "touch src/new.ts", trustedRole: "critic" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "shell", command: "sh -c 'touch src/new.ts'", trustedRole: "critic" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "shell", command: "git commit -m change", trustedRole: "critic" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "shell", command: "sh -c 'git commit -m change'", trustedRole: "critic" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "shell", command: "ls src", trustedRole: "reviewer" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", trustedRole: "builder" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "file_write", path: ".env", trustedRole: "reviewer" }).policy, "protected-path");
+});
+
 test("blocks direct file writes on host-reported protected branches", () => {
   assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", currentBranch: "main" }).policy, "protected-branch-write");
   assert.equal(checkPolicy({ action: "file_write", path: "src/index.ts", currentBranch: "master" }).policy, "protected-branch-write");

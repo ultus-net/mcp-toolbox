@@ -20,6 +20,7 @@ server.registerTool(
       patchText: z.string().optional(),
       currentBranch: z.string().optional(),
       protectedBranches: z.array(z.string()).optional(),
+      trustedRole: z.string().optional(),
     },
   },
   async (input) => {
