@@ -23,13 +23,13 @@ Git policy also protects `main`, `master`, and host-supplied custom protected br
 
 ## Development
 
-Requires Node.js 20 or newer.
+Requires Node.js 22 or newer and pnpm 11.5.2.
 
 ```sh
-npm install
-npm test
-npm run typecheck
-npm run build
+pnpm install
+pnpm test
+pnpm typecheck
+pnpm build
 ```
 
 The initial transport is stdio because both Claude Code and Codex support local stdio MCP servers. Streamable HTTP can be added without changing the policy API.

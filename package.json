@@ -1,28 +1,12 @@
 {
-  "name": "workflow-guard-mcp",
-  "version": "0.1.0",
-  "description": "Cross-client MCP policy checks for safer agentic coding workflows.",
-  "type": "module",
-  "bin": {
-    "workflow-guard-mcp": "./dist/server.js",
-    "workflow-guard-claude-hook": "./dist/claude-hook.js"
-  },
-  "files": ["dist/", "docs/", "README.md", "LICENSE"],
+  "name": "agent-tools",
+  "private": true,
+  "packageManager": "pnpm@11.5.2",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "postbuild": "node -e \"require('node:fs').chmodSync('dist/claude-hook.js', 0o755)\"",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test --import tsx test/*.test.ts"
+    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "verify": "pnpm run typecheck && pnpm run test"
   },
-  "engines": { "node": ">=20" },
-  "license": "MIT",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.25.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
-  }
+  "engines": { "node": ">=22" }
 }

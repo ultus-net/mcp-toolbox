@@ -23,6 +23,11 @@ server.registerTool(
       trustedRole: z.string().optional(),
       toolName: z.string().optional(),
     },
+    outputSchema: {
+      decision: z.enum(["allow", "deny", "ask"]),
+      policy: z.string(),
+      reason: z.string(),
+    },
   },
   async (input) => {
     const decision = checkPolicy(input);
