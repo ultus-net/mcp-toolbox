@@ -120,6 +120,7 @@ Goal: preserve trustworthy, bounded engineering accountability across sessions a
 
 - Define a client-neutral evidence/provenance contract before choosing storage or broad tool APIs. Distinguish deterministic observations, attestations, derived state, and agent assertions, and bind freshness to the subject actually established.
 - Build Project Memory as the first concrete vertical slice: durable facts, decisions, constraints, and lessons with search, supersession, provenance, and freshness.
+- Establish a tool-exposure/context-economics gate before handoff dogfooding: measure actual model-visible tool-definition tokens where observable, retain serialized schema bytes as a portable regression metric, and require progressive discovery or narrower explicit exposure above the initial-context ceiling.
 - Add subject-bound review attestations and durable lower-priority follow-up debt without making reviewer judgments deterministic proof or having the MCP launch review loops.
 - Add verification evidence by referencing real Test Intelligence, CI Intelligence, or explicitly observed verification outcomes rather than creating another test runner.
 - Add bounded durable project-context/task discovery without selecting, prioritizing, delegating, continuing, or sequencing work.
@@ -129,6 +130,18 @@ Goal: preserve trustworthy, bounded engineering accountability across sessions a
 Gate: a cross-harness handoff can reconstruct what was established, what subject it applies to, what is stale or unresolved, and what durable context matters with materially less transcript dependence and no loss of provenance.
 
 P701 planning boundary: `docs/architecture/accountability-continuity-boundary.md` records the portfolio split, portable candidates, host-specific exclusions, sequencing, and cross-harness success criteria. It deliberately does not preselect one universal storage or package boundary.
+
+P701 contract: `docs/architecture/accountability-evidence-contract.md` defines the client-neutral evidence classes, subject identity, provenance, deterministic freshness/invalidation, bounded references, privacy, cancellation, and failure semantics that Stage 7 products must preserve. It deliberately treats unproven cross-kind, execution-time, and provider/local subject relationships as `unknown` rather than manufacturing current proof, and leaves storage/API/package choices to concrete vertical slices.
+
+P702 vertical slice: `apps/project-memory-mcp` implements independently publishable bounded `record_memory`/`search_memory` tools for workspace-scoped assertion memory. `docs/architecture/project-memory-contract.md` fixes canonical workspace identity, explicit supersession, progressive retrieval, local atomic storage, secret rejection, and the deliberate single-server-process limitation; cross-process coordination remains deferred pending dogfood demand.
+
+P702A context-economics gate: `docs/architecture/tool-exposure-context-economics.md` makes actual model-visible token cost primary and serialized `tools/list` bytes secondary, targets <=1% initial context with a 2% ceiling, preserves complete stable server catalogs, and assigns progressive disclosure to capable hosts rather than connection-local MCP catalog mutation. Native host/provider tool search is preferred; independently addressable servers and explicit enablement are the eager-host fallback. The eager/explicit OpenCode evidence is sufficient for the user-approved P703 sequencing exception; P702A itself remains incomplete and its progressive OpenAI Responses measurement is backlogged as P702B until credentials are available. P703 must still report the available deliberate tool-context cost rather than accidental eager exposure.
+
+P704 vertical slice: `apps/review-accountability-mcp` keeps review authority separate from Project Memory assertions. It stores bounded subject-bound reviewer attestations, deterministically reports comparable-subject freshness, preserves conflicting reviewer statements, creates durable P2/P3 follow-up debt, and requires explicit debt resolution without transferring or strengthening the original approval. It neither launches reviewers nor treats persisted approval as deterministic correctness proof.
+
+P705 vertical slice: `apps/verification-accountability-mcp` persists bounded verification observations by delegating execution and provider lookup to Test Intelligence and CI Intelligence rather than accepting caller result claims or becoming another runner. CI evidence is correlated to authority-returned run identity and gets `fresh`/`stale` only for comparable provider/repository revisions; local Test Intelligence execution retains its workspace provenance but remains `unknown` for content freshness because no stable content subject is established by that authority contract.
+
+P706 vertical slice: `apps/project-context-mcp` provides one read-only bounded discovery tool over explicit repository-owned task/planning sources. Conventional files have fixed precedence, `docs/plans/*.md` uses deterministic bytewise ordering and bounded enumeration, snippets/results are capped, opened-file identity is checked against its canonical confined source before reading, and returned repository text remains untrusted context rather than orchestration authority.
 
 ## Stage 8: Expanded Change Intelligence
 
