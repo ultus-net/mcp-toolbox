@@ -28,13 +28,13 @@ That is a coherent repository-knowledge product and is largely client-portable. 
 
 ### Socratic Learning MCP
 
-Potential independent product after Project Memory, subject to dogfooding outside OpenCode.
+Promoted for a client-portable vertical slice after Project Memory and the Stage 7 continuity work. The refined contract is recorded in `docs/architecture/learning-mcp-contract.md`.
 
 Current source: `/var/home/hunter/opencode-workflow-guard/src/lib/learning.ts`.
 
 Current tools: `learning_profile`, `learning_checkpoint`, and `learning_record`.
 
-This should not be merged with project memory. Its state subject is a person across repositories, with different privacy, retention, synchronization, and product semantics. Opportunity ranking, intervention budgets, and evidence-backed learner state form a coherent learning domain.
+This should not be merged with project memory. Its state subject is a person across repositories, with different privacy, retention, synchronization, and product semantics. Dogfooding the original OpenCode learning tools clarified that durable history is supporting state rather than the center of the product: the valuable portable capability is the pedagogical control loop that decides when an agent should preserve human reasoning, including project-oversight and source/textbook study workflows. Host pause/wait enforcement remains adapter behavior.
 
 ### Change Assurance / Evidence MCP
 
