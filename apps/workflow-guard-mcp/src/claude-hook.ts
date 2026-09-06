@@ -52,11 +52,23 @@ export function claudeOutputFor(decision: GuardDecision): ClaudeHookOutput {
   };
 }
 
+let consecutiveDenials = 0;
+
+export function resetClaudeHookFailures(): void {
+  consecutiveDenials = 0;
+}
+
 export function evaluateClaudePreToolUse(input: ClaudePreToolUseInput): ClaudeHookOutput {
   if (input.hook_event_name !== "PreToolUse") return claudeOutputFor({ decision: "deny", policy: "invalid-hook-event", reason: "Claude hook adapter only accepts PreToolUse events." });
   const guardInput = guardInputFromClaude(input);
   if (!guardInput) return claudeOutputFor({ decision: "deny", policy: "unsupported-tool-input", reason: "Guarded Claude tool input is missing required fields or is unsupported." });
-  return claudeOutputFor(checkPolicy(guardInput));
+  const decision = checkPolicy({ ...guardInput, failureCount: consecutiveDenials });
+  if (decision.decision === "deny") {
+    consecutiveDenials += 1;
+  } else if (decision.decision === "allow") {
+    consecutiveDenials = 0;
+  }
+  return claudeOutputFor(decision);
 }
 
 async function main(): Promise<void> {

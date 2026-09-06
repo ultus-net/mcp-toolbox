@@ -49,10 +49,12 @@ test("returns structured allow and deny policy decisions", async () => {
 
 test("reports advisory status through the public tool", async () => {
   const result = await client.callTool({ name: "guard_status", arguments: {} });
-  assert.deepEqual(result.content, [{
-    type: "text",
-    text: JSON.stringify({ mode: "policy-advisor", enforcement: "host-dependent", executesActions: false }),
-  }]);
+  const status = JSON.parse((result.content as any)[0].text);
+  assert.equal(status.mode, "policy-advisor");
+  assert.equal(status.enforcement, "host-dependent");
+  assert.equal(status.executesActions, false);
+  assert.ok(status.preconditions?.modifications);
+  assert.ok(status.circuitBreaker?.guidance);
 });
 
 test("rejects malformed guard_check input at the MCP boundary", async () => {

@@ -55,7 +55,7 @@ function mutationPaths(segment: string): { targets: string[]; moveSources: strin
   if (command === "tee") targets.push(...words.slice(1).filter((word) => !word.startsWith("-")));
   if (command === "dd") targets.push(...words.slice(1).filter((word) => word.startsWith("of=")).map((word) => word.slice(3)));
   if (["touch", "mkdir", "rm", "unlink", "rmdir", "truncate", "chmod", "chown", "chgrp"].includes(command)) targets.push(...words.slice(1).filter((word) => !word.startsWith("-")));
-  if (["cp", "mv", "ln", "install"].includes(command)) {
+  if (["cp", "mv", "ln", "install", "rsync", "cpio", "scp"].includes(command)) {
     const operands: string[] = [];
     let targetDirectory: string | undefined;
     let stopOptions = false;
@@ -72,6 +72,38 @@ function mutationPaths(segment: string): { targets: string[]; moveSources: strin
     if (targetDirectory) targets.push(targetDirectory); else if (operands.length) targets.push(operands.at(-1)!);
     if (command === "mv") moveSources.push(...(targetDirectory ? operands : operands.slice(0, -1)));
     if (["cp", "mv", "ln"].includes(command)) secretSources.push(...(targetDirectory ? operands : operands.slice(0, -1)));
+  }
+  if (command === "curl") {
+    for (let i = 1; i < words.length; i += 1) {
+      const w = words[i]!;
+      if ((w === "-o" || w === "--output") && i + 1 < words.length) {
+        targets.push(words[i + 1]!);
+        break;
+      }
+      if (w.startsWith("--output=")) {
+        targets.push(w.slice("--output=".length));
+        break;
+      }
+    }
+  }
+  if (command === "wget") {
+    for (let i = 1; i < words.length; i += 1) {
+      const w = words[i]!;
+      if ((w === "-O" || w === "--output-document") && i + 1 < words.length) {
+        targets.push(words[i + 1]!);
+        break;
+      }
+      if (w.startsWith("--output-document=")) {
+        targets.push(w.slice("--output-document=".length));
+        break;
+      }
+    }
+  }
+  if (command === "git") {
+    const sub = words.slice(1).find((w) => !w.startsWith("-"));
+    if (sub === "apply" || sub === "am") {
+      targets.push("git-patch");
+    }
   }
   if (command === "sed" && words.slice(1).some((word) => /^-(?:[A-Za-z]*i|i\S*)$/.test(word) || /^--in-place(?:=.*)?$/.test(word))) {
     let scriptSupplied = false;

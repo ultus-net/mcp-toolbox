@@ -293,3 +293,28 @@ test("maps Claude PreToolUse calls to enforceable policy decisions", () => {
     assert.equal(output.systemMessage.includes("invalid-hook-event"), true);
   }
 });
+
+test("inspection commands with mutation keywords in arguments are not file mutations", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-inspection-"));
+  assert.equal(checkPolicy({ action: "shell", command: 'strings /bin/opencode | grep -E "install plugin and update config" -C 10', workspaceRoot: root, trustedRole: "reviewer" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: 'git log --grep="rm old files"', workspaceRoot: root, trustedRole: "reviewer" }).decision, "allow");
+  assert.equal(checkPolicy({ action: "shell", command: 'grep -rn "mkdir" src/', workspaceRoot: root, trustedRole: "reviewer" }).decision, "allow");
+});
+
+test("detects rsync, curl -o, and wget -O as file mutations", () => {
+  const root = mkdtempSync(join(tmpdir(), "workflow-guard-transfer-"));
+  assert.equal(checkPolicy({ action: "shell", command: "rsync -av src/ dst/", workspaceRoot: root, trustedRole: "reviewer" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "shell", command: "curl -o output.txt https://example.com", workspaceRoot: root, trustedRole: "reviewer" }).policy, "read-only-role");
+  assert.equal(checkPolicy({ action: "shell", command: "wget -O output.txt https://example.com", workspaceRoot: root, trustedRole: "reviewer" }).policy, "read-only-role");
+});
+
+test("escalates with circuit breaker guidance on repeated failures", () => {
+  const normalDeny = checkPolicy({ action: "file_write", path: "/etc/hosts" });
+  assert.equal(normalDeny.decision, "deny");
+  assert.equal(normalDeny.reason.includes("Circuit Breaker"), false);
+
+  const cbDeny = checkPolicy({ action: "file_write", path: "/etc/hosts", failureCount: 2 });
+  assert.equal(cbDeny.decision, "deny");
+  assert.equal(cbDeny.reason.includes("Workflow Guard Circuit Breaker"), true);
+  assert.equal(cbDeny.reason.includes("Repeated failures detected"), true);
+});

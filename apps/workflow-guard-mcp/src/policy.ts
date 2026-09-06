@@ -19,6 +19,7 @@ export interface GuardCheckInput {
   protectedBranches?: string[];
   trustedRole?: string;
   toolName?: string;
+  failureCount?: number;
 }
 
 export interface GuardDecision {
@@ -26,6 +27,9 @@ export interface GuardDecision {
   policy: string;
   reason: string;
 }
+
+export const CIRCUIT_BREAKER_GUIDANCE =
+  "\n\n[Workflow Guard Circuit Breaker: Repeated failures detected in this session. Stop attempting alternative workarounds or shell laundering. Address the required step above directly.]";
 
 const READ_ONLY_ROLES = new Set(["reviewer", "planner", "advisor", "critic", "explorer", "scout", "evaluator"]);
 
@@ -47,6 +51,17 @@ export function extractPatchPaths(patchText: string): string[] {
 }
 
 export function checkPolicy(input: GuardCheckInput): GuardDecision {
+  const result = evaluatePolicy(input);
+  if (result.decision === "deny" && typeof input.failureCount === "number" && input.failureCount >= 2) {
+    return {
+      ...result,
+      reason: result.reason + CIRCUIT_BREAKER_GUIDANCE,
+    };
+  }
+  return result;
+}
+
+function evaluatePolicy(input: GuardCheckInput): GuardDecision {
   if ((input.action === "shell" || input.action === "git") && input.command?.trim()) {
     const boundary = checkBoundaryPolicy(input.command, input.workspaceRoot);
     if (boundary) return boundary;
