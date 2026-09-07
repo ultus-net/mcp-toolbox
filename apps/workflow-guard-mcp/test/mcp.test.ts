@@ -21,6 +21,7 @@ test("initializes the compiled stdio server and discovers its tools", async () =
     ["guard_check", "guard_status"],
   );
   assert.ok(tools.find((tool) => tool.name === "guard_check")?.outputSchema);
+  assert.match(tools.find((tool) => tool.name === "guard_status")?.description ?? "", /Proactively call at the start/);
 });
 
 test("returns structured allow and deny policy decisions", async () => {
@@ -55,6 +56,7 @@ test("reports advisory status through the public tool", async () => {
   assert.equal(status.executesActions, false);
   assert.ok(status.preconditions?.modifications);
   assert.ok(status.circuitBreaker?.guidance);
+  assert.ok(status.recommendedActions?.some((action: string) => action.includes("fresh verification")));
 });
 
 test("rejects malformed guard_check input at the MCP boundary", async () => {

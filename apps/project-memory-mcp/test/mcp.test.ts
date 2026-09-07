@@ -33,6 +33,10 @@ test("compiled server exposes bounded record and search schemas", async () => {
   assert.equal(tools[0]?.annotations?.readOnlyHint, false);
   assert.equal(tools[1]?.annotations?.readOnlyHint, true);
   assert.ok(tools.every((tool) => tool.outputSchema));
+  assert.match(tools[0]?.description ?? "", /durable facts, decisions, constraints, or lessons/);
+  assert.match(tools[0]?.description ?? "", /do not record transient tool output or speculation/);
+  assert.match(tools[1]?.description ?? "", /Proactively search current project memory/);
+  assert.match(tools[1]?.description ?? "", /assertions, not proof/);
   assert.equal((await client.callTool({ name: "record_memory", arguments: { workspaceRoot: workspace, kind: "rumor", content: "invalid" } })).isError, true);
   assert.equal((await client.callTool({ name: "search_memory", arguments: { workspaceRoot: workspace, query: "x", limit: 21 } })).isError, true);
 });

@@ -31,6 +31,8 @@ test("exposes one bounded assessment tool with explicit optional test execution"
   const { tools } = await client.listTools();
   assert.deepEqual(tools.map((tool) => tool.name), ["assess_local_change"]);
   assert.ok(tools[0]?.outputSchema);
+  assert.match(tools[0]?.description ?? "", /Proactively call after meaningful local edits/);
+  assert.match(tools[0]?.description ?? "", /only executed when runRelevantTests is explicitly true/);
   assert.deepEqual(tools[0]?.annotations, { readOnlyHint: false, idempotentHint: false, destructiveHint: true, openWorldHint: true });
 });
 

@@ -12,6 +12,16 @@ publishable.
 - `git-intelligence-mcp` - read-only local Git status, diff, and history evidence.
 - `change-intelligence-mcp` - composed local change and verification evidence.
 - `ci-intelligence-mcp` - read-only bounded CI run and job evidence.
+- `project-context-mcp` - bounded discovery of durable repository planning context.
+- `project-memory-mcp` - durable typed project knowledge with bounded retrieval.
+- `review-accountability-mcp` - subject-bound review attestations and follow-up debt.
+- `verification-accountability-mcp` - authority-backed verification observations with bounded freshness assessment.
+
+Several lifecycle-oriented tools advertise model-visible guidance about when they are
+useful so different MCP clients can use them proactively without a custom harness.
+That guidance does not grant extra authority: repository content and stored assertions
+remain evidence with their documented trust boundaries, and Workflow Guard MCP policy
+is advisory unless the host integrates an enforcement adapter.
 
 Product documentation lives under `apps/<product>/README.md`. Architecture and
 roadmap decisions live under `docs/architecture`, `PLAN.md`, and `ROADMAP.md`.
