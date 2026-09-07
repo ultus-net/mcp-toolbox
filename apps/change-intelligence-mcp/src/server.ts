@@ -18,7 +18,7 @@ const provenance = z.object({ capability: z.string(), id: z.string() });
 server.registerTool(
   "assess_local_change",
   {
-    description: "Return bounded path-level local change facts and structural relevant-test candidates.",
+    description: "Proactively call after meaningful local edits or before finalizing changed work to assess bounded change evidence, verification gaps, and recommended checks. Relevant tests are only executed when runRelevantTests is explicitly true.",
     inputSchema: {
       workspaceRoot: z.string().min(1).refine(isAbsolute, "workspaceRoot must be absolute"),
       pathLimit: z.number().int().positive().max(500).default(100),

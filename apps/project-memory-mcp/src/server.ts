@@ -18,7 +18,7 @@ const memoryRecord = z.object({
 server.registerTool(
   "record_memory",
   {
-    description: "Persist bounded repository knowledge as a workspace-scoped agent assertion. Rejects common secret forms.",
+    description: "Proactively record durable facts, decisions, constraints, or lessons that will matter in future sessions. Persists bounded workspace-scoped agent assertions and rejects common secret forms; do not record transient tool output or speculation.",
     inputSchema: {
       workspaceRoot: z.string().min(1).max(4096), kind: memoryKind, content: z.string().min(1).max(4096),
       paths: z.array(z.string().min(1).max(500)).max(20).default([]), supersedes: z.string().min(1).max(200).optional(),
@@ -36,7 +36,7 @@ server.registerTool(
 server.registerTool(
   "search_memory",
   {
-    description: "Search bounded current repository knowledge for an explicit query. Results are agent assertions, not proof.",
+    description: "Proactively search current project memory when starting related work or before making assumptions about prior decisions and constraints. Results are bounded agent assertions, not proof.",
     inputSchema: { workspaceRoot: z.string().min(1).max(4096), query: z.string().min(1).max(500), limit: z.number().int().positive().max(20).default(8) },
     outputSchema: { records: z.array(memoryRecord), truncated: z.boolean() },
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },

@@ -24,6 +24,9 @@ test("compiled server exposes bounded review and follow-up tools", async () => {
   assert.deepEqual(tools.map(({ name }) => name), ["record_review", "list_reviews", "resolve_followup"]);
   assert.ok(tools.every((tool) => tool.outputSchema));
   assert.deepEqual(tools.map((tool) => tool.annotations?.readOnlyHint), [false, true, false]);
+  assert.match(tools[0]?.description ?? "", /records a review but does not perform one/);
+  assert.match(tools[1]?.description ?? "", /Proactively call before finalizing or handing off changed work/);
+  assert.match(tools[2]?.description ?? "", /fixed and verified/);
 });
 
 test("compiled MCP persists an attestation, checks freshness, and resolves debt", async () => {

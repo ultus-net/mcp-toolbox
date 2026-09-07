@@ -22,7 +22,7 @@ const review = z.object({
 });
 
 server.registerTool("record_review", {
-  description: "Persist a bounded reviewer attestation against an explicit content-sensitive subject; P2/P3 findings become durable follow-ups.",
+  description: "Call after an actual secondary review to persist its bounded attestation against an explicit content-sensitive subject; P2/P3 findings become durable follow-ups. This tool records a review but does not perform one.",
   inputSchema: { workspaceRoot: z.string().min(1).max(4096), reviewer: z.string().min(1).max(200), verdict: z.enum(["approved", "changes_requested"]), subject, blockingSeverities: z.array(severity).min(1).max(4), findings: z.array(finding).max(20).default([]) },
   outputSchema: { review }, annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: false },
 }, async (input, extra) => {
@@ -31,7 +31,7 @@ server.registerTool("record_review", {
 });
 
 server.registerTool("list_reviews", {
-  description: "List bounded review attestations and open follow-up debt. Freshness is unknown unless a comparable current subject is supplied.",
+  description: "Proactively call before finalizing or handing off changed work to recover review state and unresolved follow-up debt. Lists bounded review attestations; freshness is unknown unless a comparable current subject is supplied.",
   inputSchema: { workspaceRoot: z.string().min(1).max(4096), currentSubject: subject.optional(), limit: z.number().int().positive().max(50).default(20), followUpLimit: z.number().int().positive().max(50).default(20) },
   outputSchema: { reviews: z.array(review), openFollowUps: z.array(followUp), truncated: z.boolean(), followUpsTruncated: z.boolean() }, annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
 }, async (input, extra) => {
@@ -40,7 +40,7 @@ server.registerTool("list_reviews", {
 });
 
 server.registerTool("resolve_followup", {
-  description: "Resolve one durable P2/P3 follow-up without rewriting its originating review attestation.",
+  description: "Call after the underlying P2/P3 issue has been fixed and verified to resolve its durable follow-up without rewriting the originating review attestation.",
   inputSchema: { workspaceRoot: z.string().min(1).max(4096), followUpId: z.string().min(1).max(200), resolution: z.string().min(1).max(1024) },
   outputSchema: { followUp }, annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: false },
 }, async (input, extra) => {

@@ -10,7 +10,7 @@ const server = new McpServer({ name: "workflow-guard-mcp", version: "0.1.0" });
 server.registerTool(
   "guard_check",
   {
-    description: "Evaluate a proposed coding-agent action against safety policies. Note: Modifications require an active task, a feature branch, and a prior same-session read. Advisory unless the host wires the result into enforcement.",
+    description: "Proactively call before a guarded coding-agent action when the host does not enforce this policy itself. Modifications require an active task, a feature branch, and a prior same-session read. Advisory unless the host wires the result into enforcement.",
     inputSchema: {
       action: z.enum(["shell", "file_write", "git", "network", "mcp"]),
       command: z.string().optional(),
@@ -46,7 +46,7 @@ server.registerTool(
 server.registerTool(
   "guard_status",
   {
-    description: "Report guard capabilities, operational preconditions, and the enforcement boundary.",
+    description: "Proactively call at the start of guarded repository work and when a policy denial leaves the required next step unclear. Reports capabilities, operational preconditions, enforcement boundaries, and recommended lifecycle actions.",
     inputSchema: {},
   },
   async () => ({
@@ -64,6 +64,12 @@ server.registerTool(
           threshold: 2,
           guidance: "Repeated failures detected in this session. Stop attempting alternative workarounds or shell laundering. Address the required step above directly.",
         },
+        recommendedActions: [
+          "Before modifying files, ensure an active task exists, work on a feature branch, and read the existing files you will change.",
+          "After the final mutation, run fresh verification before marking all work complete.",
+          "Before finalizing or handing off changed work, inspect current review and verification accountability when those MCP products are available.",
+          "If a policy denies an action, satisfy the stated precondition directly instead of trying alternate command forms.",
+        ],
       }, null, 2),
     }],
   }),

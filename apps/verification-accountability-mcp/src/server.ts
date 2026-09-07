@@ -21,7 +21,7 @@ const currentSubject = z.discriminatedUnion("kind", [
 const observation = z.object({ id: z.string(), evidenceClass: z.literal("observation"), source: z.union([localSource, ciSource]), result: z.union([localResult, ciResult]), subject, recordedAt: z.number(), freshness: z.enum(["fresh", "stale", "unknown"]), provenance: z.object({ workspace: z.string() }) });
 
 server.registerTool("record_verification", {
-  description: "Obtain bounded verification directly from Test or CI Intelligence and persist the observed result; caller-supplied result claims are not accepted.",
+  description: "Call when a new verification observation is required for changed work. Obtains bounded results directly from Test or CI Intelligence and persists the observation; caller-supplied result claims are not accepted. Local test content freshness remains unknown.",
   inputSchema: {
     workspaceRoot: z.string().min(1).max(4096),
     request: z.discriminatedUnion("kind", [
@@ -36,7 +36,7 @@ server.registerTool("record_verification", {
 });
 
 server.registerTool("list_verifications", {
-  description: "List bounded verification observations with deterministic subject freshness. Local Test Intelligence content freshness remains unknown because its execution contract has no content-sensitive subject.",
+  description: "Proactively call before finalizing or handing off work to recover existing verification evidence and its freshness. Local Test Intelligence content freshness remains unknown because its execution contract has no content-sensitive subject.",
   inputSchema: { workspaceRoot: z.string().min(1).max(4096), currentSubject: currentSubject.optional(), limit: z.number().int().positive().max(50).default(20) },
   outputSchema: { observations: z.array(observation), truncated: z.boolean() }, annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
 }, async (input, extra) => {
