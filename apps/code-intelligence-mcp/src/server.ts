@@ -124,4 +124,97 @@ server.registerTool(
   },
 );
 
+const hoverSchema = {
+  displayString: z.string(),
+  documentation: z.string().optional(),
+  tags: z.array(z.object({ name: z.string(), text: z.string().optional() })).optional(),
+  location: z.object(locationSchema).optional(),
+};
+
+server.registerTool(
+  "hover",
+  {
+    description: "Get evaluated type signatures, parameter documentation, and JSDoc for a symbol at a 1-based position.",
+    inputSchema: {
+      workspaceRoot: workspaceRootSchema,
+      file: fileSchema,
+      line: z.number().int().positive(),
+      column: z.number().int().positive(),
+    },
+    outputSchema: { hover: z.object(hoverSchema).nullable() },
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async (input, extra) => {
+    const result = await languageService.hover(input, extra.signal);
+    const structuredContent = { hover: result ?? null };
+    return { content: [{ type: "text", text: JSON.stringify(structuredContent) }], structuredContent };
+  },
+);
+
+const diagnosticExplanationSchema = {
+  code: z.number().int(),
+  category: z.enum([
+    "type_mismatch",
+    "null_safety",
+    "missing_property",
+    "scope_resolution",
+    "syntax",
+    "arity_mismatch",
+    "async_promise",
+    "general",
+  ]),
+  title: z.string(),
+  plainEnglishExplanation: z.string(),
+  underlyingPrinciple: z.string(),
+  guidingHints: z.array(z.string()),
+};
+
+server.registerTool(
+  "explain_diagnostic",
+  {
+    description: "Deconstruct a TypeScript compiler diagnostic code into a plain-English explanation, language principle, and guiding hints.",
+    inputSchema: {
+      code: z.number().int(),
+      message: z.string().min(1),
+    },
+    outputSchema: { explanation: z.object(diagnosticExplanationSchema) },
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async (input) => {
+    const explanation = languageService.explainDiagnostic(input);
+    const structuredContent = { explanation };
+    return { content: [{ type: "text", text: JSON.stringify(structuredContent) }], structuredContent };
+  },
+);
+
+const symbolExplanationSchema = {
+  name: z.string(),
+  kind: z.string(),
+  displayString: z.string(),
+  documentation: z.string().optional(),
+  mentalModel: z.string(),
+  role: z.string(),
+  location: z.object(locationSchema).optional(),
+};
+
+server.registerTool(
+  "explain_symbol",
+  {
+    description: "Explain a code symbol in plain English, including its role, mental model, evaluated type, and documentation.",
+    inputSchema: {
+      workspaceRoot: workspaceRootSchema,
+      file: fileSchema,
+      line: z.number().int().positive(),
+      column: z.number().int().positive(),
+    },
+    outputSchema: { explanation: z.object(symbolExplanationSchema).nullable() },
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async (input, extra) => {
+    const result = await languageService.explainSymbol(input, extra.signal);
+    const structuredContent = { explanation: result ?? null };
+    return { content: [{ type: "text", text: JSON.stringify(structuredContent) }], structuredContent };
+  },
+);
+
 await server.connect(new StdioServerTransport());

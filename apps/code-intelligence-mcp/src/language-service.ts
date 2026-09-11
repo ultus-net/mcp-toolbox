@@ -64,4 +64,45 @@ export interface LanguageServiceAdapter {
   workspaceSymbols(query: WorkspaceSymbolQuery, signal?: AbortSignal): Promise<SymbolResult>;
   findReferences(query: ReferenceQuery, signal?: AbortSignal): Promise<LocationResult>;
   diagnostics(query: SymbolQuery, signal?: AbortSignal): Promise<DiagnosticResult>;
+  hover(query: HoverQuery, signal?: AbortSignal): Promise<HoverResult | undefined>;
+  explainDiagnostic(input: { code: number; message: string }): DiagnosticExplanation;
+  explainSymbol(query: SourcePosition, signal?: AbortSignal): Promise<SymbolExplanation | undefined>;
+}
+
+export interface HoverQuery extends SourcePosition {}
+
+export interface HoverResult {
+  displayString: string;
+  documentation?: string;
+  tags?: readonly { name: string; text?: string }[];
+  location?: SourceLocation;
+}
+
+export type DiagnosticCategory =
+  | "type_mismatch"
+  | "null_safety"
+  | "missing_property"
+  | "scope_resolution"
+  | "syntax"
+  | "arity_mismatch"
+  | "async_promise"
+  | "general";
+
+export interface DiagnosticExplanation {
+  code: number;
+  category: DiagnosticCategory;
+  title: string;
+  plainEnglishExplanation: string;
+  underlyingPrinciple: string;
+  guidingHints: readonly string[];
+}
+
+export interface SymbolExplanation {
+  name: string;
+  kind: string;
+  displayString: string;
+  documentation?: string;
+  mentalModel: string;
+  role: string;
+  location?: SourceLocation;
 }

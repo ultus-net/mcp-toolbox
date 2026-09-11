@@ -15,7 +15,16 @@ after(async () => client.close());
 
 test("discovers find_definition with a structured output schema", async () => {
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((tool) => tool.name).sort(), ["diagnostics", "document_symbols", "find_definition", "find_references", "workspace_symbols"]);
+  assert.deepEqual(tools.map((tool) => tool.name).sort(), [
+    "diagnostics",
+    "document_symbols",
+    "explain_diagnostic",
+    "explain_symbol",
+    "find_definition",
+    "find_references",
+    "hover",
+    "workspace_symbols",
+  ]);
   assert.ok(tools.every((tool) => tool.outputSchema));
 });
 
@@ -173,4 +182,64 @@ test("rejects path shapes that violate the public MCP contract", async () => {
     const result = await client.callTool({ name: "find_definition", arguments: arguments_ });
     assert.equal(result.isError, true);
   }
+});
+
+test("returns evaluated hover through MCP", async () => {
+  const result = await client.callTool({
+    name: "hover",
+    arguments: {
+      workspaceRoot: resolve("test/fixtures/typescript-project"),
+      file: "src/math.ts",
+      line: 1,
+      column: 17,
+    },
+  });
+
+  assert.equal(result.isError, undefined);
+  const structured = result.structuredContent as {
+    hover: { displayString: string; location?: { file: string; line: number; column: number } } | null;
+  };
+  if (!structured.hover) assert.fail("hover expected");
+  assert.equal(structured.hover.displayString, "function double(value: number): number");
+  assert.equal(structured.hover.location?.file, "src/math.ts");
+});
+
+test("explains diagnostic codes through MCP", async () => {
+  const result = await client.callTool({
+    name: "explain_diagnostic",
+    arguments: {
+      code: 2322,
+      message: "Type 'number' is not assignable to type 'string'.",
+    },
+  });
+
+  assert.equal(result.isError, undefined);
+  const structured = result.structuredContent as {
+    explanation: { code: number; category: string; title: string; guidingHints: string[] };
+  };
+  assert.equal(structured.explanation.code, 2322);
+  assert.equal(structured.explanation.category, "type_mismatch");
+  assert.equal(structured.explanation.title, "Type Assignment Incompatibility");
+  assert.ok(structured.explanation.guidingHints.length >= 2);
+});
+
+test("explains symbols through MCP", async () => {
+  const result = await client.callTool({
+    name: "explain_symbol",
+    arguments: {
+      workspaceRoot: resolve("test/fixtures/typescript-project"),
+      file: "src/math.ts",
+      line: 5,
+      column: 14,
+    },
+  });
+
+  assert.equal(result.isError, undefined);
+  const structured = result.structuredContent as {
+    explanation: { name: string; kind: string; role: string; mentalModel: string } | null;
+  };
+  if (!structured.explanation) assert.fail("explanation expected");
+  assert.equal(structured.explanation.name, "Calculator");
+  assert.equal(structured.explanation.kind, "class");
+  assert.equal(structured.explanation.role, "Class construct");
 });

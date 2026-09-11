@@ -32,7 +32,16 @@ test("packed npm artifact installs independently and launches its MCP binary", a
     try {
       await client.connect(new StdioClientTransport({ command: binary, cwd: consumer, stderr: "pipe" }));
       const { tools } = await client.listTools();
-      assert.deepEqual(tools.map((tool) => tool.name).sort(), ["diagnostics", "document_symbols", "find_definition", "find_references", "workspace_symbols"]);
+      assert.deepEqual(tools.map((tool) => tool.name).sort(), [
+        "diagnostics",
+        "document_symbols",
+        "explain_diagnostic",
+        "explain_symbol",
+        "find_definition",
+        "find_references",
+        "hover",
+        "workspace_symbols",
+      ]);
     } finally {
       await client.close();
     }

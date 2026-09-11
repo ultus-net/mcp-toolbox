@@ -360,3 +360,86 @@ test("honors an already-aborted semantic request", async () => {
     (error: unknown) => error instanceof DOMException && error.name === "AbortError",
   );
 });
+
+test("returns evaluated hover information for a symbol", async () => {
+  const service = new TypeScriptLanguageService();
+  const hover = await service.hover({ workspaceRoot, file: "src/math.ts", line: 1, column: 17 });
+
+  if (!hover) assert.fail("hover expected");
+  assert.equal(hover.displayString, "function double(value: number): number");
+  assert.deepEqual(hover.location, {
+    file: "src/math.ts",
+    line: 1,
+    column: 17,
+    endLine: 1,
+    endColumn: 23,
+  });
+});
+
+test("returns undefined hover for whitespace or non-symbol positions", async () => {
+  const service = new TypeScriptLanguageService();
+  const hover = await service.hover({ workspaceRoot, file: "src/math.ts", line: 4, column: 1 });
+  assert.equal(hover, undefined);
+});
+
+test("honors an already-aborted hover request", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const service = new TypeScriptLanguageService();
+
+  await assert.rejects(
+    service.hover({ workspaceRoot, file: "src/math.ts", line: 1, column: 17 }, controller.signal),
+    (error: unknown) => error instanceof DOMException && error.name === "AbortError",
+  );
+});
+
+test("explains diagnostic codes into pedagogical guidance", () => {
+  const service = new TypeScriptLanguageService();
+
+  const mismatch = service.explainDiagnostic({
+    code: 2322,
+    message: "Type 'number' is not assignable to type 'string'.",
+  });
+  assert.equal(mismatch.code, 2322);
+  assert.equal(mismatch.category, "type_mismatch");
+  assert.equal(mismatch.title, "Type Assignment Incompatibility");
+  assert.ok(mismatch.guidingHints.length >= 2);
+
+  const nullSafety = service.explainDiagnostic({
+    code: 2531,
+    message: "Object is possibly 'null'.",
+  });
+  assert.equal(nullSafety.category, "null_safety");
+  assert.ok(nullSafety.guidingHints.some((hint) => hint.includes("optional chaining")));
+
+  const scope = service.explainDiagnostic({
+    code: 2304,
+    message: "Cannot find name 'missingVar'.",
+  });
+  assert.equal(scope.category, "scope_resolution");
+
+  const unknown = service.explainDiagnostic({
+    code: 99999,
+    message: "Something obscure happened.",
+  });
+  assert.equal(unknown.category, "general");
+  assert.equal(unknown.code, 99999);
+});
+
+test("explains code symbols with role and mental model", async () => {
+  const service = new TypeScriptLanguageService();
+
+  const fnExplanation = await service.explainSymbol({ workspaceRoot, file: "src/math.ts", line: 1, column: 17 });
+  if (!fnExplanation) assert.fail("fnExplanation expected");
+  assert.equal(fnExplanation.name, "double");
+  assert.equal(fnExplanation.kind, "function");
+  assert.equal(fnExplanation.role, "Callable routine");
+  assert.ok(fnExplanation.mentalModel.includes("function that accepts inputs"));
+
+  const classExplanation = await service.explainSymbol({ workspaceRoot, file: "src/math.ts", line: 5, column: 14 });
+  if (!classExplanation) assert.fail("classExplanation expected");
+  assert.equal(classExplanation.name, "Calculator");
+  assert.equal(classExplanation.kind, "class");
+  assert.equal(classExplanation.role, "Class construct");
+  assert.ok(classExplanation.mentalModel.includes("blueprint"));
+});
